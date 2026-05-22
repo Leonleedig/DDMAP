@@ -1,0 +1,952 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>分院活動空間一覽 (行動通訊優化版)</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+<style>
+  :root {
+    --primary-color: #fafafa; /* 高亮白 */
+    --text-muted: #71717a;     /* 黯淡灰 */
+    --free-color: #27272a;     /* 降噪深灰，代表空閒 */
+    --booked-color: #9f1239;   /* 內斂深紅，代表已佔用 */
+    --conflict-color: #f43f5e; /* 亮紅，代表時間衝突 */
+    --bg-color: #09090b;       /* 極黑底色 */
+    --panel-bg: #18181b;       /* 碳黑卡片 */
+    --border-color: #27272a;   
+    --accent-red: #ef4444;     /* 主題亮紅 */
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang TC', 'Microsoft JhengHei', sans-serif;
+    background-color: var(--bg-color);
+    margin: 0;
+    padding: 0;
+    color: var(--primary-color);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    user-select: none;
+  }
+
+  /* --- 主內容區：便當矩陣 + 時間軸清單 (100vh) --- */
+  .main-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* 🍱 上半部：一體化便當分塊矩陣看板 (高度固定置頂，不參與滾動) */
+  .matrix-container {
+    padding: 12px;
+    background: rgba(0, 0, 0, 0.3);
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex-shrink: 0; /* 鎖定在頂部，防止被壓縮 */
+  }
+  .matrix-row {
+    display: flex;
+    height: 10vh; /* 固定 10vh 高度，大字體舒適易讀 */
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  }
+  .matrix-floor-lbl {
+    width: 48px;
+    background: #27272a;
+    color: #ffffff;
+    font-weight: 800;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-right: 1px solid var(--border-color);
+  }
+  .matrix-spaces-group {
+    flex: 1;
+    display: flex;
+    gap: 2px; /* 2px 水平分隔線，感知每層樓的空間隔間 */
+    background: var(--border-color);
+  }
+  .space-box {
+    background: var(--free-color);
+    padding: 8px 4px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center; /* 名稱置中 */
+    align-items: center;
+    min-width: 0; /* 防止文字撐開 Flex */
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+    position: relative;
+  }
+  .space-box:active {
+    opacity: 0.8;
+    transform: scale(0.97);
+  }
+  .space-name {
+    font-size: 13px;
+    font-weight: bold;
+    color: #ffffff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    width: 100%;
+    text-align: center;
+    transition: opacity 0.2s;
+  }
+  .space-status-txt {
+    font-size: 10px;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    width: 100%;
+    text-align: center;
+    font-weight: 500;
+    margin-top: 4px;
+    display: none; /* 預設空閒時隱藏狀態 */
+  }
+  
+  /* 矩陣狀態色塊轉換 */
+  .space-box.status-free { 
+    background: var(--free-color); 
+  }
+  /* 💡 降噪：無活動區塊字體呈黯淡灰 */
+  .space-box.status-free .space-name { 
+    opacity: 0.35; 
+    font-weight: normal;
+  }
+  
+  .space-box.status-booked { 
+    background: var(--booked-color); 
+  }
+  .space-box.status-booked .space-name { 
+    opacity: 1; 
+  }
+  .space-box.status-booked .space-status-txt { 
+    display: block; 
+    color: #fecdd3; 
+  }
+  
+  .space-box.status-conflict { 
+    background: var(--conflict-color); 
+    animation: pulse-glow 1.5s infinite alternate;
+  }
+  .space-box.status-conflict .space-name { 
+    opacity: 1; 
+  }
+  .space-box.status-conflict .space-status-txt { 
+    display: block; 
+    color: #ffedd5; 
+    font-weight: bold; 
+  }
+
+  @keyframes pulse-glow {
+    0% { box-shadow: inset 0 0 4px rgba(255,255,255,0.2); }
+    100% { box-shadow: inset 0 0 14px rgba(239, 68, 68, 0.7); }
+  }
+
+  /* ⏳ 下半部：智慧時間軸活動清單 (滾動區域) */
+  .timeline-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: rgba(24, 24, 27, 0.4);
+  }
+  .activity-stream {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    /* 為右下角懸浮膠囊預留安全操作邊距 */
+    padding-bottom: 96px; 
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* 🗂 手機專用摺疊開盒卡片 */
+  .mobile-card {
+    background: var(--panel-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 0; 
+    overflow: hidden;
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+  
+  /* 💡 卡片主顯示區 (左右並排、向上對齊) */
+  .mobile-card-summary {
+    padding: 14px;
+    display: flex;
+    gap: 16px;
+    align-items: flex-start; /* 起訖時間與右側標題頂端對齊 */
+  }
+  
+  /* 起訖時間垂直羅列、靠左 */
+  .card-time-col {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    flex-shrink: 0;
+    width: 56px; 
+  }
+  .card-time-start {
+    font-size: 14px;
+    font-weight: 700;
+    color: #ff8a8a;
+    font-family: monospace;
+    line-height: 1.2;
+  }
+  /* 結束時間配色與字重對齊開始時間樣式 */
+  .card-time-end {
+    font-size: 14px; 
+    font-weight: 700; 
+    color: #ff8a8a;   
+    font-family: monospace;
+    line-height: 1.2;
+    margin-top: 2px;
+  }
+  
+  /* 右側標題欄 */
+  .card-title-col {
+    flex: 1;
+    min-width: 0;
+  }
+  .card-title-lbl {
+    font-size: 17px;
+    font-weight: bold;
+    color: #ffffff;
+    line-height: 1.3;
+    word-wrap: break-word;
+    word-break: break-all;
+    transition: color 0.2s;
+  }
+
+  /* 📦 卡片摺疊隱藏區 (預設收合) */
+  .mobile-card-details {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    /* 💡 移除獨立背景色，使其完全與外容器卡片背景同色 */
+  }
+  .mobile-card-details-content {
+    padding: 0px 14px 14px 14px; /* 移除 border-top 虛線，使結構完美融合 */
+  }
+  
+  /* 💡 摺疊卡片內：多欄資料欄位水平並排、向上齊行 */
+  .card-details-grid {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start; /* 向上齊行 */
+  }
+  .details-column {
+    flex: 1;
+    min-width: 0;
+  }
+  .details-label {
+    font-size: 11px;
+    color: var(--accent-red); /* 標籤文字使用主題紅 */
+    font-weight: bold;
+    margin-bottom: 4px;
+    letter-spacing: 0.5px;
+  }
+  .details-val {
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.4;
+    word-wrap: break-word;
+    word-break: break-all;
+  }
+
+  /* 被選中/當前焦點卡片加強亮框 */
+  .mobile-card.active-item {
+    border-color: #ffffff; /* 💡 改用純白色作為選中外框 */
+    background: rgba(255, 255, 255, 0.04);
+    box-shadow: 0 4px 15px rgba(255, 255, 255, 0.05);
+  }
+  
+  /* 衝突卡片警示 */
+  .mobile-card.has-conflict-card {
+    border-color: var(--conflict-color);
+    background: rgba(244, 63, 94, 0.05);
+  }
+
+  .no-schedule-msg {
+    color: var(--text-muted);
+    text-align: center;
+    padding: 60px 20px;
+    font-size: 16px;
+    line-height: 1.6;
+  }
+
+  /* --- 📱 右下角「大拇指導航膠囊」 --- */
+  .floating-nav-capsule {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: rgba(24, 24, 27, 0.85);
+    border: 1.5px solid rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-radius: 30px;
+    padding: 6px 12px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    transition: transform 0.2s, opacity 0.2s;
+  }
+  .floating-nav-capsule:active {
+    transform: scale(0.98);
+  }
+  
+  .btn-floating-arrow {
+    background: rgba(255, 255, 255, 0.08);
+    border: none;
+    color: #ffffff;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .btn-floating-arrow:active {
+    background: rgba(255, 255, 255, 0.2);
+  }
+  
+  .btn-floating-trigger {
+    background: transparent;
+    border: none;
+    color: var(--accent-red); /* 日期文字使用亮紅 */
+    font-weight: 700;
+    font-size: 15px;
+    padding: 0 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  /* --- 智慧月曆全螢幕 Bottom Sheet --- */
+  .calendar-sheet {
+    position: fixed;
+    bottom: 0; left: 0; width: 100vw; height: 75vh;
+    background: #09090b;
+    border-top: 2px solid var(--border-color);
+    border-radius: 20px 20px 0 0;
+    z-index: 2000;
+    transform: translateY(100%);
+    transition: transform 0.35s cubic-bezier(0.25, 1, 0.5, 1);
+    padding: 16px 20px 24px 20px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.5);
+  }
+  .calendar-sheet.show { transform: translateY(0); }
+  
+  /* Bottom Sheet 頂部拖曳把手 */
+  .calendar-sheet::before {
+    content: "";
+    width: 40px;
+    height: 5px;
+    background: #3f3f46;
+    border-radius: 3px;
+    align-self: center;
+    margin-bottom: 15px;
+  }
+
+  .calendar-sheet-mask {
+    position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+    background: rgba(0,0,0,0.65); z-index: 1999; display: none;
+    backdrop-filter: blur(2px);
+  }
+  .calendar-sheet-mask.show { display: block; }
+  
+  .cal-sheet-header {
+    display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;
+  }
+  .cal-sheet-title { font-size: 20px; color: white; font-weight: bold; }
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 12px; text-align: center; }
+  .cal-day-lbl { font-size: 14px; color: var(--text-muted); font-weight: bold; padding-bottom: 10px; }
+  .cal-cell {
+    height: 42px; display: flex; align-items: center; justify-content: center;
+    font-size: 16px; border-radius: 50%; cursor: pointer; color: #52525b;
+    transition: all 0.15s ease;
+  }
+  .cal-cell:active {
+    background: rgba(255, 255, 255, 0.1);
+  }
+  .cal-cell.has-act { color: var(--accent-red); font-weight: bold; }
+  .cal-cell.is-today { color: #ffffff; background: rgba(255,255,255,0.08); }
+  .cal-cell.is-selected { background: var(--accent-red) !important; color: #ffffff !important; font-weight: bold; }
+
+  /* 💡 Toast 輕提示系統 */
+  .toast-container {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: rgba(24, 24, 27, 0.95);
+    border: 1px solid var(--border-color);
+    padding: 12px 24px;
+    border-radius: 30px;
+    color: #ffffff;
+    font-size: 14px;
+    font-weight: 500;
+    z-index: 9999;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+    opacity: 0;
+    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease;
+    pointer-events: none;
+    white-space: nowrap;
+  }
+  .toast-container.show {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+  }
+</style>
+</head>
+<body>
+
+  <!-- 主內容區 (佔滿 100vh) -->
+  <div class="main-content">
+    
+    <!-- 🍱 便當分塊矩陣看板 (完全置頂固定) -->
+    <div class="matrix-container" id="matrixContainer">
+      <!-- 由 JS 動態繪製 -->
+    </div>
+
+    <!-- ⏳ 下半部活動時間軸流 (可滑動) -->
+    <div class="timeline-container">
+      <div class="activity-stream" id="activityStreamItems">
+        <!-- 摺疊卡片區 -->
+      </div>
+    </div>
+
+  </div>
+
+  <!-- 📱 右下角大拇指操作導航膠囊 -->
+  <div class="floating-nav-capsule">
+    <button class="btn-floating-arrow" onclick="changeDateOffset(-1)">◀</button>
+    <button class="btn-floating-trigger" onclick="toggleCalendarSheet()">
+      <span id="dateTriggerBtnText">載入中...</span> ▾
+    </button>
+    <button class="btn-floating-arrow" onclick="changeDateOffset(1)">▶</button>
+  </div>
+
+  <!-- 全螢幕月曆抽屜與遮罩 -->
+  <div class="calendar-sheet-mask" id="calMask" onclick="toggleCalendarSheet()"></div>
+  <div class="calendar-sheet" id="calSheet">
+    <div class="cal-sheet-header">
+      <button class="btn-nav" onclick="changeCalendarMonth(-1)">上個月</button>
+      <div class="cal-sheet-title" id="calSheetTitle">2026年 5月</div>
+      <button class="btn-nav" onclick="changeCalendarMonth(1)">下個月</button>
+    </div>
+    <div class="cal-grid" id="calGridItems"></div>
+    <!-- 💡 返回今天按鈕字體反白 (Inverted White Button) -->
+    <button class="btn-nav" style="margin-top: auto; width: 100%; padding: 14px; background: #ffffff; color: #09090b; border: none; border-radius: 12px; font-weight: bold;" onclick="changeDateOffset(0)">返回今天</button>
+  </div>
+
+  <!-- 💡 Toast 元件 -->
+  <div id="toastBox" class="toast-container">提示訊息</div>
+
+<script>
+  // 1. 空間定義與彈性權重比例
+  const mobileMatrixConfig = [
+    {
+      "level": "4F",
+      "spaces": [
+        { "id": "4F-Top", "name": "寮房", "flex": 1.2 },
+        { "id": "4F-Mid", "name": "歡喜地", "flex": 1.0 }
+      ]
+    },
+    {
+      "level": "3F",
+      "spaces": [
+        { "id": "3F-Top", "name": "大殿", "flex": 1.2 },
+        { "id": "3F-BR", "name": "大殿外廊", "flex": 1.0 }
+      ]
+    },
+    {
+      "level": "2F",
+      "spaces": [
+        { "id": "2F-Big", "name": "藝文走廊", "flex": 0.9 },
+        { "id": "2F-SmallA", "name": "法堂二", "flex": 0.8 },
+        { "id": "2F-SmallB", "name": "法堂一", "flex": 0.8 },
+        { "id": "2F-New4", "name": "辦公室", "flex": 0.9 }
+      ]
+    },
+    {
+      "level": "1F",
+      "spaces": [
+        { "id": "1F-A", "name": "齋堂", "flex": 1.0 },
+        { "id": "1F-B", "name": "大寮", "flex": 0.8 },
+        { "id": "1F-New3", "name": "知客", "flex": 1.0 },
+        { "id": "1F-New4", "name": "輕食區", "flex": 0.8 }
+      ]
+    }
+  ];
+
+  let allSheetData = []; 
+  let currentDayActivities = [];
+  let currentSelectedIndex = -1;
+  let expandedIndex = -1; // 💡 追蹤目前摺疊卡片索引 (Accordion State)
+  let globalSelectedDateStr = "";
+  let calendarViewDate = new Date();
+  let toastTimer = null;
+
+  // 顯示自訂 Toast 提示
+  function showToast(msg) {
+    const toast = document.getElementById('toastBox');
+    toast.textContent = msg;
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => {
+      toast.classList.remove('show');
+    }, 2500);
+  }
+
+  // 2. 語意解析引擎
+  function extractSpaceIds(rawLocation) {
+    if (!rawLocation) return [];
+    const loc = String(rawLocation).toLowerCase();
+    const ids = new Set();
+
+    if (loc.includes("全區1-4") || loc.includes("1-4樓") || loc.includes("全棟") || loc.includes("一到四樓") || loc === "全區") {
+      mobileMatrixConfig.forEach(floor => floor.spaces.forEach(s => ids.add(s.id)));
+      return Array.from(ids);
+    }
+    if (loc.includes("齋堂")) ids.add("1F-A");
+    if (loc.includes("大寮")) ids.add("1F-B");
+    if (loc.includes("知客")) ids.add("1F-New3");
+    if (loc.includes("輕食")) ids.add("1F-New4");
+    if (loc.includes("法堂一二") || loc.includes("法堂12")) {
+      ids.add("2F-SmallA"); ids.add("2F-SmallB");
+    } else {
+      if (loc.includes("法堂二") || loc.includes("法堂2")) ids.add("2F-SmallA");
+      if (loc.includes("法堂一") || loc.includes("法堂1")) ids.add("2F-SmallB");
+      if (loc.includes("法堂") && !loc.includes("法堂一") && !loc.includes("法堂二") && !loc.includes("法堂1") && !loc.includes("法堂2")) {
+        ids.add("2F-SmallB");
+      }
+    }
+    if (loc.includes("走廊") || loc.includes("藝文")) ids.add("2F-Big");
+    if (loc.includes("辦公")) ids.add("2F-New4");
+    if (loc.includes("外廊") || loc.includes("大殿外")) ids.add("3F-BR");
+    let tempLoc = loc.replace(/大殿外廊/g, "").replace(/大殿外/g, "");
+    if (tempLoc.includes("大殿")) ids.add("3F-Top");
+    if (loc.includes("寮房") || loc.includes("住宿")) ids.add("4F-Top");
+    if (loc.includes("歡喜地")) ids.add("4F-Mid");
+
+    return Array.from(ids);
+  }
+
+  // 3. 初始化繪製便當矩陣外殼
+  function initMatrixDOM() {
+    const container = document.getElementById('matrixContainer');
+    let html = '';
+    mobileMatrixConfig.forEach(floor => {
+      html += `<div class="matrix-row">
+        <div class="matrix-floor-lbl">${floor.level}</div>
+        <div class="matrix-spaces-group">`;
+      floor.spaces.forEach(space => {
+        html += `<div id="grid-${space.id}" class="space-box status-free" style="flex: ${space.flex};" onclick="handleSpaceClick('${space.id}', '${space.name}', '${floor.level}')">
+          <div class="space-name">${space.name}</div>
+          <div class="space-status-txt"></div>
+        </div>`;
+      });
+      html += `</div></div>`;
+    });
+    container.innerHTML = html;
+  }
+
+  // 🍱 便當分塊點擊連動時間流邏輯
+  function handleSpaceClick(spaceId, spaceName, floorLevel) {
+    if (currentDayActivities.length === 0) {
+      showToast(`🟢 ${floorLevel} ${spaceName} 目前整日空閒`);
+      return;
+    }
+
+    let pivotTime = -1;
+    if (currentSelectedIndex >= 0 && currentDayActivities[currentSelectedIndex]) {
+      pivotTime = currentDayActivities[currentSelectedIndex].start;
+    } else {
+      const now = new Date();
+      pivotTime = now.getHours() + (now.getMinutes() / 60);
+    }
+
+    const matchedIndex = currentDayActivities.findIndex(act => {
+      return act.ids.includes(spaceId) && (pivotTime >= act.start && pivotTime < act.end);
+    });
+
+    if (matchedIndex !== -1) {
+      selectActivityCard(matchedIndex, false);
+      const listContainer = document.getElementById('activityStreamItems');
+      const activeCard = listContainer.children[matchedIndex];
+      if (activeCard) {
+        activeCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      showToast(`🎯 已選定 ${floorLevel} ${spaceName} 的目前活動`);
+    } else {
+      const otherReserve = currentDayActivities.find(act => act.ids.includes(spaceId));
+      if (otherReserve) {
+        const otherIdx = currentDayActivities.indexOf(otherReserve);
+        selectActivityCard(otherIdx, false);
+        const listContainer = document.getElementById('activityStreamItems');
+        const activeCard = listContainer.children[otherIdx];
+        if (activeCard) {
+          activeCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        showToast(`📅 已為您跳轉至此空間的今日排程`);
+      } else {
+        showToast(`🟢 ${floorLevel} ${spaceName} 此時段空閒`);
+      }
+    }
+  }
+
+  // 4. 獲取試算表資料
+  async function fetchOnlineExcel() {
+    const fileId = '1Qejre9LK6vA-mt9y4nvn8A6C2pcqhHHd5Dt4my80jkw';
+    const exportUrl = `https://docs.google.com/spreadsheets/d/${fileId}/export?format=csv`;
+    const proxies = [
+      `https://corsproxy.io/?${encodeURIComponent(exportUrl)}`,
+      `https://api.allorigins.win/raw?url=${encodeURIComponent(exportUrl)}`,
+      exportUrl
+    ];
+    let csvText = null;
+    for (const url of proxies) {
+      try {
+        const response = await fetch(url);
+        if (response.ok) {
+          csvText = await response.text();
+          if (csvText && csvText.length > 50 && !csvText.includes('<html')) break;
+        }
+      } catch (e) { console.warn("切換Proxy中..."); }
+    }
+    if (!csvText) {
+      showToast("⚠️ 線上資料庫同步失敗，請確認網路連線。");
+      return;
+    }
+
+    const workbook = XLSX.read(csvText, { type: 'string' });
+    const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+    const rawData = XLSX.utils.sheet_to_json(worksheet, { header: "A", raw: false, defval: "" });
+    const cleanedData = [];
+
+    rawData.forEach(row => {
+      let rawDate = String(row['A'] || '').trim();
+      let parsedDate = new Date(rawDate);
+      if (isNaN(parsedDate.getTime()) || rawDate.length < 5) return;
+      
+      let standardDate = `${parsedDate.getFullYear()}/${String(parsedDate.getMonth() + 1).padStart(2, '0')}/${String(parsedDate.getDate()).padStart(2, '0')}`;
+      let rawTime = String(row['B'] || '').trim().replace(/上午|下午|早上|中午|晚上|半|點|分|\s+/g, '');
+      const match = rawTime.match(/(\d{1,2})[:：]?(\d{2})?[~\-到至]+(\d{1,2})[:：]?(\d{2})?/);
+      if (!match) return;
+
+      let startNum = parseInt(match[1], 10) + (match[2] ? parseInt(match[2], 10)/60 : 0);
+      let endNum = parseInt(match[3], 10) + (match[4] ? parseInt(match[4], 10)/60 : 0);
+      
+      let matchedSpaceIds = extractSpaceIds(String(row['D'] || ''));
+      if (matchedSpaceIds.length > 0) {
+        cleanedData.push({
+          date: standardDate,
+          ids: matchedSpaceIds,
+          start: startNum,
+          end: endNum,
+          activityName: String(row['C'] || '未命名活動').trim(),
+          remarks: String(row['E'] || '').trim(),
+          rawLocation: String(row['D'] || '').trim()
+        });
+      }
+    });
+    allSheetData = cleanedData;
+    calculateConflicts();
+  }
+
+  // 5. 計算當前時間段的佔用與衝突狀態
+  function calculateConflicts() {
+    mobileMatrixConfig.forEach(f => f.spaces.forEach(s => {
+      const box = document.getElementById(`grid-${s.id}`);
+      if (box) {
+        box.className = "space-box status-free";
+        box.querySelector('.space-status-txt').style.display = "none";
+        box.querySelector('.space-status-txt').textContent = "";
+      }
+    }));
+
+    if (currentDayActivities.length === 0) return;
+
+    let pivotTime = -1;
+    if (currentSelectedIndex >= 0 && currentDayActivities[currentSelectedIndex]) {
+      pivotTime = currentDayActivities[currentSelectedIndex].start; 
+    } else {
+      const now = new Date();
+      pivotTime = now.getHours() + (now.getMinutes() / 60);
+    }
+
+    const spaceUsageMap = {};
+    currentDayActivities.forEach(act => {
+      if (pivotTime >= act.start && pivotTime < act.end) {
+        act.ids.forEach(id => {
+          if (!spaceUsageMap[id]) spaceUsageMap[id] = [];
+          spaceUsageMap[id].push(act);
+        });
+      }
+    });
+
+    Object.keys(spaceUsageMap).forEach(id => {
+      const box = document.getElementById(`grid-${id}`);
+      if (!box) return;
+      const totalActs = spaceUsageMap[id];
+
+      if (totalActs.length > 1) {
+        box.className = "space-box status-conflict";
+        const statusTxt = box.querySelector('.space-status-txt');
+        statusTxt.style.display = "block";
+        statusTxt.textContent = `💥 衝突(${totalActs.length})`;
+        totalActs.forEach(a => a._hasConflict = true);
+      } else {
+        box.className = "space-box status-booked";
+        const statusTxt = box.querySelector('.space-status-txt');
+        statusTxt.style.display = "block";
+        statusTxt.textContent = totalActs[0].activityName.substring(0,4);
+      }
+    });
+  }
+
+  // 6. 渲染行動端時間流清單
+  function renderActivityList() {
+    const listContainer = document.getElementById('activityStreamItems');
+    listContainer.innerHTML = '';
+    
+    currentDayActivities = allSheetData.filter(item => item.date === globalSelectedDateStr)
+                                       .sort((a, b) => a.start - b.start);
+
+    currentDayActivities.forEach(a => a._hasConflict = false);
+
+    if (currentDayActivities.length === 0) {
+      listContainer.innerHTML = `<div class="no-schedule-msg">該日無排程排約<br><small>(${globalSelectedDateStr})</small></div>`;
+      calculateConflicts();
+      return;
+    }
+
+    // 建立摺疊卡片 DOM
+    currentDayActivities.forEach((item, index) => {
+      const card = document.createElement('div');
+      card.className = 'mobile-card';
+      card.id = `activity-card-${index}`;
+
+      card.innerHTML = `
+        <div class="mobile-card-summary" onclick="handleCardClick(${index})">
+          <div class="card-time-col">
+            <div class="card-time-start">${formatTime(item.start)}</div>
+            <div class="card-time-end">${formatTime(item.end)}</div>
+          </div>
+          <div class="card-title-col">
+            <div class="card-title-lbl">${item.activityName}</div>
+          </div>
+        </div>
+        <div class="mobile-card-details" id="details-${index}">
+          <div class="mobile-card-details-content">
+            <div class="card-details-grid">
+              <div class="details-column">
+                <div class="details-label">備註</div>
+                <div class="details-val">${item.remarks ? item.remarks : '無'}</div>
+              </div>
+              <div class="details-column">
+                <div class="details-label">原始地點</div>
+                <div class="details-val">${item.rawLocation || '無'}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+      
+      listContainer.appendChild(card);
+    });
+
+    let targetIdx = 0;
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')}`;
+    
+    if (globalSelectedDateStr === todayStr) {
+      const currentHour = now.getHours() + (now.getMinutes() / 60);
+      for (let i = 0; i < currentDayActivities.length; i++) {
+        if (currentHour >= currentDayActivities[i].start && currentHour < currentDayActivities[i].end) {
+          targetIdx = i; break;
+        } else if (currentDayActivities[i].start > currentHour) {
+          targetIdx = i; break;
+        }
+        targetIdx = currentDayActivities.length - 1;
+      }
+    }
+
+    selectActivityCard(targetIdx, false);
+    
+    setTimeout(() => {
+      const activeCard = document.getElementById(`activity-card-${targetIdx}`);
+      if (activeCard) activeCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, 200);
+  }
+
+  // 💡 點按卡片展開/收合事件處理 (Accordion 唯一展開限制)
+  function handleCardClick(index) {
+    if (index === currentSelectedIndex) {
+      selectActivityCard(index, true);
+    } else {
+      selectActivityCard(index, false);
+    }
+  }
+
+  // 🚀 風琴式高度展開演算 (Accordion Logic)
+  function selectActivityCard(index, toggleIfSame = false) {
+    const cards = document.querySelectorAll('.mobile-card');
+    
+    if (index === currentSelectedIndex && toggleIfSame) {
+      expandedIndex = (expandedIndex === index) ? -1 : index;
+    } else {
+      currentSelectedIndex = index;
+      expandedIndex = index;
+    }
+
+    cards.forEach((c, i) => {
+      const details = document.getElementById(`details-${i}`);
+      
+      if (i === currentSelectedIndex) {
+        c.classList.add('active-item');
+      } else {
+        c.classList.remove('active-item');
+        c.classList.remove('has-conflict-card');
+      }
+
+      if (details) {
+        if (i === expandedIndex) {
+          details.style.maxHeight = details.scrollHeight + "px";
+        } else {
+          details.style.maxHeight = "0px";
+        }
+      }
+    });
+
+    calculateConflicts();
+
+    if (currentDayActivities[currentSelectedIndex]) {
+      const item = currentDayActivities[currentSelectedIndex];
+      if (item._hasConflict) {
+        cards[currentSelectedIndex]?.classList.add('has-conflict-card');
+      }
+    }
+  }
+
+  function formatTime(decimalTime) {
+    const hours = Math.floor(decimalTime);
+    const minutes = (decimalTime % 1 === 0.5) ? '30' : '00';
+    return `${hours.toString().padStart(2, '0')}:${minutes}`;
+  }
+
+  // 7. Bottom Sheet 抽屜式智慧月曆
+  function toggleCalendarSheet() {
+    document.getElementById('calMask').classList.toggle('show');
+    document.getElementById('calSheet').classList.toggle('show');
+    if (document.getElementById('calSheet').classList.contains('show')) {
+      const parts = globalSelectedDateStr.split('/');
+      calendarViewDate = new Date(parseInt(parts[0],10), parseInt(parts[1],10)-1, 1);
+      renderCalendarItems();
+    }
+  }
+
+  function changeCalendarMonth(offset) {
+    calendarViewDate.setMonth(calendarViewDate.getMonth() + offset);
+    renderCalendarItems();
+  }
+
+  function renderCalendarItems() {
+    const grid = document.getElementById('calGridItems');
+    const y = calendarViewDate.getFullYear();
+    const m = calendarViewDate.getMonth();
+    
+    document.getElementById('calSheetTitle').textContent = `${y}年 ${m + 1}月`;
+    
+    const dayNames = ['日', '一', '二', '三', '四', '五', '六'];
+    let html = dayNames.map(d => `<div class="cal-day-lbl">${d}</div>`).join('');
+    
+    const firstDay = new Date(y, m, 1).getDay();
+    const daysInMonth = new Date(y, m + 1, 0).getDate();
+    const activeDates = new Set(allSheetData.map(d => d.date));
+    
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}/${String(today.getMonth() + 1).padStart(2, '0')}/${String(today.getDate()).padStart(2, '0')}`;
+
+    for (let i = 0; i < firstDay; i++) html += `<div></div>`;
+    
+    for (let i = 1; i <= daysInMonth; i++) {
+      const dStr = `${y}/${String(m + 1).padStart(2, '0')}/${String(i).padStart(2, '0')}`;
+      let cls = ['cal-cell'];
+      if (activeDates.has(dStr)) cls.push('cal-cell has-act');
+      if (dStr === todayStr) cls.push('is-today');
+      if (dStr === globalSelectedDateStr) cls.push('is-selected');
+      
+      html += `<div class="${cls.join(' ')}" onclick="selectCalendarDate('${dStr}')">${i}</div>`;
+    }
+    grid.innerHTML = html;
+  }
+
+  function selectCalendarDate(dateStr) {
+    globalSelectedDateStr = dateStr;
+    document.getElementById('dateTriggerBtnText').textContent = globalSelectedDateStr.substring(5);
+    toggleCalendarSheet();
+    renderActivityList();
+  }
+
+  // 8. 導航膠囊
+  function changeDateOffset(offset) {
+    let d = new Date();
+    if (offset !== 0 && globalSelectedDateStr) {
+      const parts = globalSelectedDateStr.split('/');
+      d = new Date(parseInt(parts[0],10), parseInt(parts[1],10)-1, parseInt(parts[2],10));
+      d.setDate(d.getDate() + offset);
+    }
+    const targetStr = `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
+    globalSelectedDateStr = targetStr;
+    document.getElementById('dateTriggerBtnText').textContent = globalSelectedDateStr.substring(5);
+    
+    document.getElementById('calMask').classList.remove('show');
+    document.getElementById('calSheet').classList.remove('show');
+
+    renderActivityList();
+  }
+
+  // 9. 初始化啟動
+  window.addEventListener('DOMContentLoaded', async () => {
+    initMatrixDOM();
+    changeDateOffset(0); 
+    await fetchOnlineExcel();
+    renderActivityList();
+
+    setInterval(async () => {
+      await fetchOnlineExcel();
+      renderActivityList();
+    }, 10 * 60 * 1000);
+  });
+</script>
+</body>
+</html>
