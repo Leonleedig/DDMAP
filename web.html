@@ -1,10 +1,9 @@
-
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>會館空間預約動態儀表板</title>
+<title>分院活動使用空間一覽</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 <style>
   :root {
@@ -119,12 +118,12 @@
     overflow-y: auto;
   }
   .info-card::before, .info-card::after { content: ''; margin: auto; }
-  .info-card h3 { margin: 0 0 20px 0; color: #ffffff; font-size: 24px; font-weight: 500; }
+  .info-card h3 { margin: 0 0 20px 0; color: #ffffff; font-size: 2vh; font-weight: 500; }
   .info-detail { display: flex; flex-direction: column; gap: 6px; margin-bottom: 25px; }
   .info-detail:last-child { margin-bottom: 0; }
-  .info-label { font-size: 13px; color: var(--text-muted); }
-  .info-value { font-size: 16px; color: var(--primary-color); }
-  .info-value.remarks { font-size: 14px; line-height: 1.6; color: #bbbbbb; }
+  .info-label { font-size: 1.5vh; color: var(--text-muted); }
+  .info-value { font-size: 2vh; color: var(--primary-color); }
+  .info-value.remarks { font-size: 2vh; line-height: 1.6; color: #bbbbbb; }
 
   .back-btn {
     background: transparent;
@@ -214,7 +213,7 @@
     padding: 4px 0;
     background: rgba(255, 255, 255, 0);
     color: var(--text-muted);
-    border: 0px solid var(--border-color);
+    border: 1px solid var(--border-color);
     font-size: 1.7vh;
     cursor: pointer;
     transition: all 0.2s;
@@ -383,11 +382,11 @@
   .status-booked { fill: var(--booked-color); }
 
   .space-label {
-    fill: #ffffff; font-size: 1.7vh; font-weight: normal; text-anchor: middle;
+    fill: #ffffff; font-size: 1.5vh; font-weight: normal; text-anchor: middle;
     dominant-baseline: middle; pointer-events: none; opacity: 0; transition: opacity 0.4s ease;
   }
   .space-sublabel {
-    fill: #aaaaaa; font-size: 1.2vh; text-anchor: middle;
+    fill: #aaaaaa; font-size: 1vh; font-weight: 100; text-anchor: middle;
     dominant-baseline: middle; pointer-events: none; opacity: 0; transition: opacity 0.4s ease;
   }
   .floor-container.active .space-label, .floor-container.active .space-sublabel { opacity: 1; }
@@ -438,7 +437,7 @@
 
     <!-- 左側動態資訊卡片 (互斥切換) -->
     <div id="spaceDetailCard" class="info-card hidden">
-      <button class="back-btn" onclick="showActivityListPanel()">← 返回排程列表</button>
+      <button class="back-btn" onclick="showActivityListPanel()">◀ 返回活動列表</button>
       <h3 id="infoLocation">請選擇空間</h3>
       <div class="info-detail">
         <span class="info-label">活動名稱</span>
@@ -901,7 +900,7 @@
                 x="${space.x}" y="${space.y}" width="${space.width}" height="${space.height}" rx="2" 
                 data-name="${space.name}" />
           <text class="space-label" x="${centerX}" y="${centerY - 8}">${space.name}</text>
-          <text id="text-${space.id}" class="space-sublabel" x="${centerX}" y="${centerY + 12}">空間</text>
+          <text id="text-${space.id}" class="space-sublabel" x="${centerX}" y="${centerY + 12}">無活動</text>
         `;
       });
 
@@ -1089,7 +1088,7 @@
 
     if (currentDayActivities.length === 0) {
       listContainer.innerHTML = `
-        <div style="color:var(--text-muted); padding:10px 0; line-height: 1.6;">
+        <div style="color:var(--text-muted); padding:10px 0; line-height: 1.6; font-size: 2vh; ">
           該日無排程<br>
           <small style="opacity: 0.6;">(${selectedDateStr})</small>
         </div>`;
@@ -1192,7 +1191,7 @@
         spaceRect.setAttribute('data-raw-location', booking.rawLocation); 
       } else {
         spaceRect.classList.add('status-free');
-        if(textLabel) textLabel.textContent = '空間';
+        if(textLabel) textLabel.textContent = '無活動';
         spaceRect.removeAttribute('data-status');
         spaceRect.removeAttribute('data-raw-location');
       }
