@@ -2,20 +2,20 @@
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>分院活動空間一覽 (行動通訊優化版)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>分院活動空間一覽 (手機版)</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 <style>
   :root {
-    --primary-color: #fafafa; /* 高亮白 */
-    --text-muted: #71717a;     /* 黯淡灰 */
-    --free-color: #27272a;     /* 降噪深灰，代表空閒 */
-    --booked-color: #9f1239;   /* 內斂深紅，代表已佔用 */
-    --conflict-color: #f43f5e; /* 亮紅，代表時間衝突 */
-    --bg-color: #09090b;       /* 極黑底色 */
-    --panel-bg: #18181b;       /* 碳黑卡片 */
+    --primary-color: #fafafa;
+    --text-muted: #71717a;
+    --free-color: #27272a;
+    --booked-color: #9f1239;
+    --conflict-color: #f43f5e;
+    --bg-color: #09090b;
+    --panel-bg: #18181b;
     --border-color: #27272a;   
-    --accent-red: #ef4444;     /* 主題亮紅 */
+    --accent-red: #ef4444;
   }
 
   body {
@@ -29,18 +29,33 @@
     flex-direction: column;
     overflow: hidden;
     user-select: none;
+    -webkit-tap-highlight-color: transparent;
   }
 
-  /* --- 主內容區：便當矩陣 + 時間軸清單 (100vh) --- */
-  .main-content {
-    flex: 1;
+  /* 💡 隱藏所有區域的捲軸，保留流暢滑動 */
+  ::-webkit-scrollbar {
+    display: none !important;
+  }
+  * {
+    -ms-overflow-style: none !important;
+    scrollbar-width: none !important;
+  }
+
+  /* 💡 原生視圖容器切換 (Native View Pages) */
+  .view-page {
     display: flex;
     flex-direction: column;
     height: 100vh;
+    width: 100vw;
     overflow: hidden;
   }
+  .hidden {
+    display: none !important;
+  }
 
-  /* 🍱 上半部：一體化便當分塊矩陣看板 (高度固定置頂，不參與滾動) */
+  /* =========================================
+     [視圖 A] 主內容區：便當矩陣 + 時間軸
+     ========================================= */
   .matrix-container {
     padding: 12px;
     background: rgba(0, 0, 0, 0.3);
@@ -48,11 +63,11 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
-    flex-shrink: 0; /* 鎖定在頂部，防止被壓縮 */
+    flex-shrink: 0;
   }
   .matrix-row {
     display: flex;
-    height: 10vh; /* 固定 10vh 高度，大字體舒適易讀 */
+    height: 10vh;
     border-radius: 8px;
     overflow: hidden;
     border: 1px solid var(--border-color);
@@ -72,7 +87,7 @@
   .matrix-spaces-group {
     flex: 1;
     display: flex;
-    gap: 2px; /* 2px 水平分隔線，感知每層樓的空間隔間 */
+    gap: 2px;
     background: var(--border-color);
   }
   .space-box {
@@ -80,10 +95,10 @@
     padding: 8px 4px;
     display: flex;
     flex-direction: column;
-    justify-content: center; /* 名稱置中 */
+    justify-content: center;
     align-items: center;
-    min-width: 0; /* 防止文字撐開 Flex */
-    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    min-width: 0;
+    transition: all 0.2s;
     cursor: pointer;
     position: relative;
   }
@@ -112,49 +127,28 @@
     text-align: center;
     font-weight: 500;
     margin-top: 4px;
-    display: none; /* 預設空閒時隱藏狀態 */
+    display: none;
   }
   
-  /* 矩陣狀態色塊轉換 */
-  .space-box.status-free { 
-    background: var(--free-color); 
-  }
-  /* 💡 降噪：無活動區塊字體呈黯淡灰 */
-  .space-box.status-free .space-name { 
-    opacity: 0.35; 
-    font-weight: normal;
-  }
+  .space-box.status-free { background: var(--free-color); }
+  .space-box.status-free .space-name { opacity: 0.35; font-weight: normal; }
   
-  .space-box.status-booked { 
-    background: var(--booked-color); 
-  }
-  .space-box.status-booked .space-name { 
-    opacity: 1; 
-  }
-  .space-box.status-booked .space-status-txt { 
-    display: block; 
-    color: #fecdd3; 
-  }
+  .space-box.status-booked { background: var(--booked-color); }
+  .space-box.status-booked .space-name { opacity: 1; }
+  .space-box.status-booked .space-status-txt { display: block; color: #fecdd3; }
   
   .space-box.status-conflict { 
     background: var(--conflict-color); 
     animation: pulse-glow 1.5s infinite alternate;
   }
-  .space-box.status-conflict .space-name { 
-    opacity: 1; 
-  }
-  .space-box.status-conflict .space-status-txt { 
-    display: block; 
-    color: #ffedd5; 
-    font-weight: bold; 
-  }
+  .space-box.status-conflict .space-name { opacity: 1; }
+  .space-box.status-conflict .space-status-txt { display: block; color: #ffedd5; font-weight: bold; }
 
   @keyframes pulse-glow {
     0% { box-shadow: inset 0 0 4px rgba(255,255,255,0.2); }
     100% { box-shadow: inset 0 0 14px rgba(239, 68, 68, 0.7); }
   }
 
-  /* ⏳ 下半部：智慧時間軸活動清單 (滾動區域) */
   .timeline-container {
     flex: 1;
     display: flex;
@@ -169,12 +163,10 @@
     display: flex;
     flex-direction: column;
     gap: 10px;
-    /* 為右下角懸浮膠囊預留安全操作邊距 */
     padding-bottom: 96px; 
     -webkit-overflow-scrolling: touch;
   }
   
-  /* 🗂 手機專用摺疊開盒卡片 */
   .mobile-card {
     background: var(--panel-bg);
     border: 1px solid var(--border-color);
@@ -187,16 +179,12 @@
     flex-direction: column;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   }
-  
-  /* 💡 卡片主顯示區 (左右並排、向上對齊) */
   .mobile-card-summary {
     padding: 14px;
     display: flex;
     gap: 16px;
-    align-items: flex-start; /* 起訖時間與右側標題頂端對齊 */
+    align-items: flex-start; 
   }
-  
-  /* 起訖時間垂直羅列、靠左 */
   .card-time-col {
     display: flex;
     flex-direction: column;
@@ -204,28 +192,15 @@
     flex-shrink: 0;
     width: 56px; 
   }
-  .card-time-start {
+  .card-time-start, .card-time-end {
     font-size: 14px;
     font-weight: 700;
     color: #ff8a8a;
     font-family: monospace;
     line-height: 1.2;
   }
-  /* 結束時間配色與字重對齊開始時間樣式 */
-  .card-time-end {
-    font-size: 14px; 
-    font-weight: 700; 
-    color: #ff8a8a;   
-    font-family: monospace;
-    line-height: 1.2;
-    margin-top: 2px;
-  }
-  
-  /* 右側標題欄 */
-  .card-title-col {
-    flex: 1;
-    min-width: 0;
-  }
+  .card-time-end { margin-top: 2px; }
+  .card-title-col { flex: 1; min-width: 0; }
   .card-title-lbl {
     font-size: 17px;
     font-weight: bold;
@@ -235,31 +210,21 @@
     word-break: break-all;
     transition: color 0.2s;
   }
-
-  /* 📦 卡片摺疊隱藏區 (預設收合) */
   .mobile-card-details {
     max-height: 0;
     overflow: hidden;
     transition: max-height 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-    /* 💡 移除獨立背景色，使其完全與外容器卡片背景同色 */
   }
-  .mobile-card-details-content {
-    padding: 0px 14px 14px 14px; /* 移除 border-top 虛線，使結構完美融合 */
-  }
-  
-  /* 💡 摺疊卡片內：多欄資料欄位水平並排、向上齊行 */
+  .mobile-card-details-content { padding: 0px 14px 14px 14px; }
   .card-details-grid {
     display: flex;
     gap: 16px;
-    align-items: flex-start; /* 向上齊行 */
+    align-items: flex-start; 
   }
-  .details-column {
-    flex: 1;
-    min-width: 0;
-  }
+  .details-column { flex: 1; min-width: 0; }
   .details-label {
     font-size: 11px;
-    color: var(--accent-red); /* 標籤文字使用主題紅 */
+    color: var(--accent-red); 
     font-weight: bold;
     margin-bottom: 4px;
     letter-spacing: 0.5px;
@@ -272,14 +237,11 @@
     word-break: break-all;
   }
 
-  /* 被選中/當前焦點卡片加強亮框 */
   .mobile-card.active-item {
-    border-color: #ffffff; /* 💡 改用純白色作為選中外框 */
+    border-color: #ffffff; 
     background: rgba(255, 255, 255, 0.04);
     box-shadow: 0 4px 15px rgba(255, 255, 255, 0.05);
   }
-  
-  /* 衝突卡片警示 */
   .mobile-card.has-conflict-card {
     border-color: var(--conflict-color);
     background: rgba(244, 63, 94, 0.05);
@@ -293,7 +255,6 @@
     line-height: 1.6;
   }
 
-  /* --- 📱 右下角「大拇指導航膠囊」 --- */
   .floating-nav-capsule {
     position: fixed;
     bottom: 20px;
@@ -309,12 +270,8 @@
     gap: 12px;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
     z-index: 1000;
-    transition: transform 0.2s, opacity 0.2s;
   }
-  .floating-nav-capsule:active {
-    transform: scale(0.98);
-  }
-  
+  .floating-nav-capsule:active { transform: scale(0.98); }
   .btn-floating-arrow {
     background: rgba(255, 255, 255, 0.08);
     border: none;
@@ -322,152 +279,193 @@
     width: 36px;
     height: 36px;
     border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 14px;
-    cursor: pointer;
-    transition: background 0.15s;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; cursor: pointer;
   }
-  .btn-floating-arrow:active {
-    background: rgba(255, 255, 255, 0.2);
-  }
-  
+  .btn-floating-arrow:active { background: rgba(255, 255, 255, 0.2); }
   .btn-floating-trigger {
-    background: transparent;
-    border: none;
-    color: var(--accent-red); /* 日期文字使用亮紅 */
-    font-weight: 700;
-    font-size: 15px;
-    padding: 0 6px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 6px;
+    background: transparent; border: none; color: var(--accent-red);
+    font-weight: 700; font-size: 15px; padding: 0 6px; cursor: pointer;
+    display: flex; align-items: center; gap: 6px;
   }
 
-  /* --- 智慧月曆全螢幕 Bottom Sheet --- */
-  .calendar-sheet {
-    position: fixed;
-    bottom: 0; left: 0; width: 100vw; height: 75vh;
-    background: #09090b;
-    border-top: 2px solid var(--border-color);
-    border-radius: 20px 20px 0 0;
-    z-index: 2000;
-    transform: translateY(100%);
-    transition: transform 0.35s cubic-bezier(0.25, 1, 0.5, 1);
+  /* =========================================
+     [視圖 B] 網頁原生版面：月曆與本月活動清單
+     ========================================= */
+  #calendarView {
+    background: var(--bg-color);
     padding: 16px 20px 24px 20px;
     box-sizing: border-box;
-    display: flex;
-    flex-direction: column;
-    box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.5);
+    z-index: 2000; /* 原生層級覆蓋 */
   }
-  .calendar-sheet.show { transform: translateY(0); }
-  
-  /* Bottom Sheet 頂部拖曳把手 */
-  .calendar-sheet::before {
-    content: "";
-    width: 40px;
-    height: 5px;
-    background: #3f3f46;
-    border-radius: 3px;
-    align-self: center;
-    margin-bottom: 15px;
+  .btn-nav {
+    background: rgba(255, 255, 255, 0.08);
+    border: none; color: #ffffff; padding: 8px 16px;
+    border-radius: 8px; font-size: 14px; cursor: pointer;
+    font-weight: bold;
   }
-
-  .calendar-sheet-mask {
-    position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-    background: rgba(0,0,0,0.65); z-index: 1999; display: none;
-    backdrop-filter: blur(2px);
-  }
-  .calendar-sheet-mask.show { display: block; }
+  .btn-nav:active { background: rgba(255, 255, 255, 0.15); }
   
   .cal-sheet-header {
-    display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;
+    display: flex; gap: 8px; align-items: stretch; margin-bottom: 20px;
+    flex-shrink: 0;
   }
-  .cal-sheet-title { font-size: 20px; color: white; font-weight: bold; }
+  .cal-sheet-header > button {
+    flex: 1;
+    padding: 8px 0;
+  }
+  .cal-sheet-title { 
+    flex: 1; 
+    display: flex; 
+    justify-content: center; 
+    align-items: center; 
+    font-size: 18px; 
+    color: white; 
+    font-weight: bold; 
+    white-space: nowrap; 
+  }
   .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 12px; text-align: center; }
   .cal-day-lbl { font-size: 14px; color: var(--text-muted); font-weight: bold; padding-bottom: 10px; }
+  
   .cal-cell {
     height: 42px; display: flex; align-items: center; justify-content: center;
-    font-size: 16px; border-radius: 50%; cursor: pointer; color: #52525b;
-    transition: all 0.15s ease;
+    font-size: 16px; border-radius: 50%; cursor: pointer; color: #64748b;
   }
-  .cal-cell:active {
-    background: rgba(255, 255, 255, 0.1);
-  }
+  .cal-cell:active { background: rgba(255, 255, 255, 0.1); }
   .cal-cell.has-act { color: var(--accent-red); font-weight: bold; }
   .cal-cell.is-today { color: #ffffff; background: rgba(255,255,255,0.08); }
   .cal-cell.is-selected { background: var(--accent-red) !important; color: #ffffff !important; font-weight: bold; }
 
+  /* 本月活動原生清單容器 */
+  .cal-month-list {
+    flex: 1;
+    overflow-y: auto;
+    margin-bottom: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    -webkit-overflow-scrolling: touch;
+    min-height: 0; 
+  }
+  .cal-month-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 8px;
+    border-bottom: 1px solid var(--border-color);
+    font-size: 14px;
+    cursor: pointer;
+  }
+  .cal-month-row:active { background: rgba(255, 255, 255, 0.05); }
+  .cal-month-date {
+    font-family: monospace;
+    color: var(--conflict-color); 
+    font-weight: 700;
+    flex-shrink: 0;
+    width: 32px;
+  }
+  .cal-month-time {
+    font-family: monospace;
+    color: var(--text-muted);
+    font-size: 13px;
+    flex-shrink: 0;
+    width: 82px;
+  }
+  .cal-month-name {
+    font-weight: bold;
+    color: #ffffff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
+  }
+
+  /* 年份跳轉下拉式選單 */
+  .year-opt {
+    padding: 12px; cursor: pointer; text-align: center;
+    border-bottom: 1px solid var(--border-color); font-family: monospace;
+    color: var(--primary-color);
+  }
+  .year-opt:active { background: var(--booked-color); color: #ffffff; }
+  .year-opt:last-child { border-bottom: none; }
+
   /* 💡 Toast 輕提示系統 */
   .toast-container {
-    position: fixed;
-    bottom: 30px;
-    left: 50%;
+    position: fixed; bottom: 30px; left: 50%;
     transform: translateX(-50%) translateY(100px);
     background: rgba(24, 24, 27, 0.95);
     border: 1px solid var(--border-color);
-    padding: 12px 24px;
-    border-radius: 30px;
-    color: #ffffff;
-    font-size: 14px;
-    font-weight: 500;
-    z-index: 9999;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.4);
-    opacity: 0;
-    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease;
-    pointer-events: none;
-    white-space: nowrap;
+    padding: 12px 24px; border-radius: 30px;
+    color: #ffffff; font-size: 14px; font-weight: 500;
+    z-index: 9999; box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+    opacity: 0; transition: transform 0.3s, opacity 0.3s;
+    pointer-events: none; white-space: nowrap;
   }
-  .toast-container.show {
-    transform: translateX(-50%) translateY(0);
-    opacity: 1;
-  }
+  .toast-container.show { transform: translateX(-50%) translateY(0); opacity: 1; }
 </style>
 </head>
 <body>
 
-  <!-- 主內容區 (佔滿 100vh) -->
-  <div class="main-content">
-    
-    <!-- 🍱 便當分塊矩陣看板 (完全置頂固定) -->
+  <!-- =========================================
+       [視圖 A] 主畫面：便當矩陣與排程時間軸
+       ========================================= -->
+  <div id="mainView" class="view-page">
+    <!-- 便當分塊矩陣看板 -->
     <div class="matrix-container" id="matrixContainer">
       <!-- 由 JS 動態繪製 -->
     </div>
 
-    <!-- ⏳ 下半部活動時間軸流 (可滑動) -->
+    <!-- 活動時間軸流 -->
     <div class="timeline-container">
       <div class="activity-stream" id="activityStreamItems">
         <!-- 摺疊卡片區 -->
       </div>
     </div>
 
+    <!-- 右下角大拇指操作導航膠囊 -->
+    <div class="floating-nav-capsule">
+      <button class="btn-floating-arrow" onclick="changeDateOffset(-1)">◀</button>
+      <button class="btn-floating-trigger" onclick="openCalendarView()">
+        <span id="dateTriggerBtnText">載入中...</span> ▾
+      </button>
+      <button class="btn-floating-arrow" onclick="changeDateOffset(1)">▶</button>
+    </div>
   </div>
 
-  <!-- 📱 右下角大拇指操作導航膠囊 -->
-  <div class="floating-nav-capsule">
-    <button class="btn-floating-arrow" onclick="changeDateOffset(-1)">◀</button>
-    <button class="btn-floating-trigger" onclick="toggleCalendarSheet()">
-      <span id="dateTriggerBtnText">載入中...</span> ▾
-    </button>
-    <button class="btn-floating-arrow" onclick="changeDateOffset(1)">▶</button>
-  </div>
+  <!-- =========================================
+       [視圖 B] 網頁原生版面：月曆與本月清單
+       ========================================= -->
+  <div id="calendarView" class="view-page hidden">
 
-  <!-- 全螢幕月曆抽屜與遮罩 -->
-  <div class="calendar-sheet-mask" id="calMask" onclick="toggleCalendarSheet()"></div>
-  <div class="calendar-sheet" id="calSheet">
     <div class="cal-sheet-header">
       <button class="btn-nav" onclick="changeCalendarMonth(-1)">上個月</button>
-      <div class="cal-sheet-title" id="calSheetTitle">2026年 5月</div>
+      <div class="cal-sheet-title" id="calSheetTitle">
+        <!-- 西元年下拉選單 -->
+        <div style="position: relative; display: inline-block;">
+          <span id="calYearBtn" style="cursor: pointer; text-decoration: underline; text-underline-offset: 4px; padding: 2px 8px; border-radius: 6px; background: rgba(255,255,255,0.06);" onclick="toggleYearDropdown(event)">2026</span>
+          <div id="yearDropdownMenu" class="hidden" style="position: absolute; top: 110%; left: 50%; transform: translateX(-50%); background: #18181b; border: 1px solid var(--border-color); border-radius: 8px; z-index: 2100; max-height: 200px; overflow-y: auto; width: 100px; box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
+            <!-- 由 JS 動態填塞年份 -->
+          </div>
+        </div>
+        <span>年 </span>
+        <span id="calMonthVal">5</span>
+        <span>月</span>
+      </div>
       <button class="btn-nav" onclick="changeCalendarMonth(1)">下個月</button>
     </div>
+    
+    <!-- 互斥切換區域：日曆網格 V.S. 滿版列表 -->
     <div class="cal-grid" id="calGridItems"></div>
-    <!-- 💡 返回今天按鈕字體反白 (Inverted White Button) -->
-    <button class="btn-nav" style="margin-top: auto; width: 100%; padding: 14px; background: #ffffff; color: #09090b; border: none; border-radius: 12px; font-weight: bold;" onclick="changeDateOffset(0)">返回今天</button>
+    <div class="cal-month-list hidden" id="calMonthListItems"></div>
+
+    <!-- 底部操作區 -->
+    <div style="margin-top: auto; padding-top: 16px; flex-shrink: 0; display: flex; gap: 12px;">
+      <button class="btn-nav" id="btnToggleCalMode" onclick="toggleCalViewMode()" style="flex: 1; padding: 14px; background: rgba(255,255,255,0.08); border: 1px solid var(--border-color); color: #ffffff; border-radius: 12px; font-weight: bold;">當月活動列表</button>
+      <button class="btn-nav" style="flex: 1; padding: 14px; background: #ffffff; color: #09090b; border: none; border-radius: 12px; font-weight: bold;" onclick="changeDateOffset(0); closeCalendarView();">返回今天</button>
+    </div>
   </div>
 
-  <!-- 💡 Toast 元件 -->
+  <!-- 💡 全局 Toast 提示元件 -->
   <div id="toastBox" class="toast-container">提示訊息</div>
 
 <script>
@@ -510,10 +508,11 @@
   let allSheetData = []; 
   let currentDayActivities = [];
   let currentSelectedIndex = -1;
-  let expandedIndex = -1; // 💡 追蹤目前摺疊卡片索引 (Accordion State)
+  let expandedIndex = -1; 
   let globalSelectedDateStr = "";
   let calendarViewDate = new Date();
   let toastTimer = null;
+  let calViewMode = "grid"; // "grid" 顯示日曆, "list" 顯示月清單
 
   // 顯示自訂 Toast 提示
   function showToast(msg) {
@@ -579,7 +578,6 @@
     container.innerHTML = html;
   }
 
-  // 🍱 便當分塊點擊連動時間流邏輯
   function handleSpaceClick(spaceId, spaceName, floorLevel) {
     if (currentDayActivities.length === 0) {
       showToast(`🟢 ${floorLevel} ${spaceName} 目前整日空閒`);
@@ -602,9 +600,7 @@
       selectActivityCard(matchedIndex, false);
       const listContainer = document.getElementById('activityStreamItems');
       const activeCard = listContainer.children[matchedIndex];
-      if (activeCard) {
-        activeCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
+      if (activeCard) activeCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
       showToast(`🎯 已選定 ${floorLevel} ${spaceName} 的目前活動`);
     } else {
       const otherReserve = currentDayActivities.find(act => act.ids.includes(spaceId));
@@ -613,9 +609,7 @@
         selectActivityCard(otherIdx, false);
         const listContainer = document.getElementById('activityStreamItems');
         const activeCard = listContainer.children[otherIdx];
-        if (activeCard) {
-          activeCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
+        if (activeCard) activeCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
         showToast(`📅 已為您跳轉至此空間的今日排程`);
       } else {
         showToast(`🟢 ${floorLevel} ${spaceName} 此時段空閒`);
@@ -744,12 +738,11 @@
     currentDayActivities.forEach(a => a._hasConflict = false);
 
     if (currentDayActivities.length === 0) {
-      listContainer.innerHTML = `<div class="no-schedule-msg">該日無排程排約<br><small>(${globalSelectedDateStr})</small></div>`;
+      listContainer.innerHTML = `<div class="no-schedule-msg">暫無活動申請<br><small>(${globalSelectedDateStr})</small></div>`;
       calculateConflicts();
       return;
     }
 
-    // 建立摺疊卡片 DOM
     currentDayActivities.forEach((item, index) => {
       const card = document.createElement('div');
       card.className = 'mobile-card';
@@ -769,18 +762,17 @@
           <div class="mobile-card-details-content">
             <div class="card-details-grid">
               <div class="details-column">
-                <div class="details-label">備註</div>
+                <div class="details-label">申請人/單位</div>
                 <div class="details-val">${item.remarks ? item.remarks : '無'}</div>
               </div>
               <div class="details-column">
-                <div class="details-label">原始地點</div>
+                <div class="details-label">使用地點</div>
                 <div class="details-val">${item.rawLocation || '無'}</div>
               </div>
             </div>
           </div>
         </div>
       `;
-      
       listContainer.appendChild(card);
     });
 
@@ -801,14 +793,12 @@
     }
 
     selectActivityCard(targetIdx, false);
-    
     setTimeout(() => {
       const activeCard = document.getElementById(`activity-card-${targetIdx}`);
       if (activeCard) activeCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }, 200);
   }
 
-  // 💡 點按卡片展開/收合事件處理 (Accordion 唯一展開限制)
   function handleCardClick(index) {
     if (index === currentSelectedIndex) {
       selectActivityCard(index, true);
@@ -817,7 +807,6 @@
     }
   }
 
-  // 🚀 風琴式高度展開演算 (Accordion Logic)
   function selectActivityCard(index, toggleIfSame = false) {
     const cards = document.querySelectorAll('.mobile-card');
     
@@ -830,7 +819,6 @@
 
     cards.forEach((c, i) => {
       const details = document.getElementById(`details-${i}`);
-      
       if (i === currentSelectedIndex) {
         c.classList.add('active-item');
       } else {
@@ -863,28 +851,99 @@
     return `${hours.toString().padStart(2, '0')}:${minutes}`;
   }
 
-  // 7. Bottom Sheet 抽屜式智慧月曆
-  function toggleCalendarSheet() {
-    document.getElementById('calMask').classList.toggle('show');
-    document.getElementById('calSheet').classList.toggle('show');
-    if (document.getElementById('calSheet').classList.contains('show')) {
-      const parts = globalSelectedDateStr.split('/');
-      calendarViewDate = new Date(parseInt(parts[0],10), parseInt(parts[1],10)-1, 1);
+  // =========================================
+  // 7. 網頁原生切換：日曆與本月活動視圖
+  // =========================================
+  function openCalendarView() {
+    document.getElementById('mainView').classList.add('hidden');
+    document.getElementById('calendarView').classList.remove('hidden');
+    
+    // 初始化視圖為目前全球選定的月份
+    const parts = globalSelectedDateStr.split('/');
+    calendarViewDate = new Date(parseInt(parts[0],10), parseInt(parts[1],10)-1, 1);
+    
+    if (calViewMode === "grid") {
+      renderCalendarItems();
+      document.getElementById('calGridItems').classList.remove('hidden');
+      document.getElementById('calMonthListItems').classList.add('hidden');
+      document.getElementById('btnToggleCalMode').textContent = "當月活動列表";
+    } else {
+      renderMonthListItems();
+      document.getElementById('calGridItems').classList.add('hidden');
+      document.getElementById('calMonthListItems').classList.remove('hidden');
+      document.getElementById('btnToggleCalMode').textContent = "活動月曆";
+    }
+  }
+
+  function closeCalendarView() {
+    document.getElementById('calendarView').classList.add('hidden');
+    document.getElementById('mainView').classList.remove('hidden');
+  }
+
+  function toggleCalViewMode() {
+    const grid = document.getElementById('calGridItems');
+    const list = document.getElementById('calMonthListItems');
+    const toggleBtn = document.getElementById('btnToggleCalMode');
+    
+    if (calViewMode === "grid") {
+      calViewMode = "list";
+      grid.classList.add('hidden');
+      list.classList.remove('hidden');
+      toggleBtn.textContent = "活動月曆";
+      renderMonthListItems();
+    } else {
+      calViewMode = "grid";
+      list.classList.add('hidden');
+      grid.classList.remove('hidden');
+      toggleBtn.textContent = "當月活動列表";
       renderCalendarItems();
     }
   }
 
   function changeCalendarMonth(offset) {
     calendarViewDate.setMonth(calendarViewDate.getMonth() + offset);
-    renderCalendarItems();
+    if (calViewMode === "grid") {
+      renderCalendarItems();
+    } else {
+      renderMonthListItems();
+    }
   }
 
+  // 西元年跳轉
+  function toggleYearDropdown(e) {
+    e.stopPropagation();
+    const dropdown = document.getElementById('yearDropdownMenu');
+    dropdown.classList.toggle('hidden');
+  }
+
+  function selectYear(year) {
+    calendarViewDate.setFullYear(year);
+    document.getElementById('yearDropdownMenu').classList.add('hidden');
+    if (calViewMode === "grid") {
+      renderCalendarItems();
+    } else {
+      renderMonthListItems();
+    }
+  }
+
+  function populateYearDropdown() {
+    const dropdown = document.getElementById('yearDropdownMenu');
+    const baseYear = new Date().getFullYear();
+    let html = '';
+    for (let y = baseYear - 15; y <= baseYear + 15; y++) {
+      html += `<div class="year-opt" onclick="selectYear(${y})">${y}</div>`;
+    }
+    dropdown.innerHTML = html;
+  }
+
+  // 繪製日期面板
   function renderCalendarItems() {
     const grid = document.getElementById('calGridItems');
     const y = calendarViewDate.getFullYear();
     const m = calendarViewDate.getMonth();
     
-    document.getElementById('calSheetTitle').textContent = `${y}年 ${m + 1}月`;
+    document.getElementById('calYearBtn').textContent = y;
+    document.getElementById('calMonthVal').textContent = m + 1;
     
     const dayNames = ['日', '一', '二', '三', '四', '五', '六'];
     let html = dayNames.map(d => `<div class="cal-day-lbl">${d}</div>`).join('');
@@ -910,14 +969,54 @@
     grid.innerHTML = html;
   }
 
+  // 繪製單行月清單
+  function renderMonthListItems() {
+    const list = document.getElementById('calMonthListItems');
+    const y = calendarViewDate.getFullYear();
+    const m = calendarViewDate.getMonth();
+    
+    document.getElementById('calYearBtn').textContent = y;
+    document.getElementById('calMonthVal').textContent = m + 1;
+    
+    const targetPrefix = `${y}/${String(m + 1).padStart(2, '0')}/`;
+    const monthlyActivities = allSheetData.filter(item => item.date && item.date.startsWith(targetPrefix))
+                                           .sort((a, b) => {
+                                             const dayA = parseInt(a.date.split('/')[2], 10);
+                                             const dayB = parseInt(b.date.split('/')[2], 10);
+                                             if (dayA !== dayB) return dayA - dayB;
+                                             return a.start - b.start;
+                                           });
+                                           
+    if (monthlyActivities.length === 0) {
+      list.innerHTML = `<div class="no-schedule-msg" style="margin: auto;">此月份尚無任何活動</div>`;
+      return;
+    }
+    
+    let html = '';
+    monthlyActivities.forEach(item => {
+      const dayNum = parseInt(item.date.split('/')[2], 10);
+      const timeRange = `${formatTime(item.start)}-${formatTime(item.end)}`;
+      
+      html += `
+        <div class="cal-month-row" onclick="selectCalendarDate('${item.date}')">
+          <div class="cal-month-date">${String(dayNum).padStart(2, '0')}日</div>
+          <div class="cal-month-time">${timeRange}</div>
+          <div class="cal-month-name">${item.activityName}</div>
+        </div>
+      `;
+    });
+    list.innerHTML = html;
+  }
+
+  // 選擇日期後切換回主畫面
   function selectCalendarDate(dateStr) {
     globalSelectedDateStr = dateStr;
     document.getElementById('dateTriggerBtnText').textContent = globalSelectedDateStr.substring(5);
-    toggleCalendarSheet();
+    closeCalendarView();
     renderActivityList();
   }
 
-  // 8. 導航膠囊
+  // 8. 全域導航膠囊切換日期
   function changeDateOffset(offset) {
     let d = new Date();
     if (offset !== 0 && globalSelectedDateStr) {
@@ -929,15 +1028,24 @@
     globalSelectedDateStr = targetStr;
     document.getElementById('dateTriggerBtnText').textContent = globalSelectedDateStr.substring(5);
     
-    document.getElementById('calMask').classList.remove('show');
-    document.getElementById('calSheet').classList.remove('show');
-
     renderActivityList();
   }
+
+  // 點擊外部自動收起年份下拉選單
+  document.addEventListener('click', (e) => {
+    const dropdown = document.getElementById('yearDropdownMenu');
+    const yearBtn = document.getElementById('calYearBtn');
+    if (dropdown && !dropdown.classList.contains('hidden')) {
+      if (e.target !== yearBtn && !dropdown.contains(e.target)) {
+        dropdown.classList.add('hidden');
+      }
+    }
+  });
 
   // 9. 初始化啟動
   window.addEventListener('DOMContentLoaded', async () => {
     initMatrixDOM();
+    populateYearDropdown();
     changeDateOffset(0); 
     await fetchOnlineExcel();
     renderActivityList();
