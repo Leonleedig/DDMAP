@@ -149,24 +149,22 @@
     100% { box-shadow: inset 0 0 14px rgba(239, 68, 68, 0.7); }
   }
 
+  /* ⏳ 下半部：智慧時間軸活動清單 (滾動區域) */
   .timeline-container {
     flex: 1;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
+    overflow-y: auto; /* 💡 確保只有此區塊可以垂直滾動 */
     background: rgba(24, 24, 27, 0.4);
+    padding: 12px;
+    padding-bottom: 96px; /* 💡 為右下角懸浮膠囊預留安全操作邊距，滑到底也不會被遮住 */
+    -webkit-overflow-scrolling: touch;
   }
   .activity-stream {
-    flex: 1;
-    overflow-y: auto;
-    padding: 12px;
     display: flex;
     flex-direction: column;
     gap: 10px;
-    padding-bottom: 96px; 
-    -webkit-overflow-scrolling: touch;
   }
   
+  /* 🗂 手機專用摺疊開盒卡片 */
   .mobile-card {
     background: var(--panel-bg);
     border: 1px solid var(--border-color);
@@ -465,8 +463,8 @@
     </div>
   </div>
 
-  <!-- 💡 全局 Toast 提示元件 -->
-  <div id="toastBox" class="toast-container">提示訊息</div>
+  <!-- 💡 全局 Toast 提示元件 (目前功能凍結隱藏) -->
+  <div id="toastBox" class="toast-container hidden">提示訊息</div>
 
 <script>
   // 1. 空間定義與彈性權重比例
@@ -516,13 +514,9 @@
 
   // 顯示自訂 Toast 提示
   function showToast(msg) {
-    const toast = document.getElementById('toastBox');
-    toast.textContent = msg;
-    toast.classList.add('show');
-    clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => {
-      toast.classList.remove('show');
-    }, 2500);
+    // 💡 暫時凍結 Toast 通知功能，未來近一步開發預約功能時再啟用
+    console.log("[Toast 隱藏] " + msg);
+    return;
   }
 
   // 2. 語意解析引擎
@@ -598,8 +592,7 @@
 
     if (matchedIndex !== -1) {
       selectActivityCard(matchedIndex, false);
-      const listContainer = document.getElementById('activityStreamItems');
-      const activeCard = listContainer.children[matchedIndex];
+      const activeCard = document.getElementById(`activity-card-${matchedIndex}`);
       if (activeCard) activeCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
       showToast(`🎯 已選定 ${floorLevel} ${spaceName} 的目前活動`);
     } else {
@@ -607,8 +600,7 @@
       if (otherReserve) {
         const otherIdx = currentDayActivities.indexOf(otherReserve);
         selectActivityCard(otherIdx, false);
-        const listContainer = document.getElementById('activityStreamItems');
-        const activeCard = listContainer.children[otherIdx];
+        const activeCard = document.getElementById(`activity-card-${otherIdx}`);
         if (activeCard) activeCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
         showToast(`📅 已為您跳轉至此空間的今日排程`);
       } else {
@@ -618,7 +610,6 @@
   }
 
   // 4. 獲取試算表資料 
-  // 💡 已新增時間戳記 (Cache-Busting) 強制破除前端快取
   async function fetchOnlineExcel() {
     const fileId = '1Qejre9LK6vA-mt9y4nvn8A6C2pcqhHHd5Dt4my80jkw';
     const timestamp = new Date().getTime(); // 產生唯一時間戳
@@ -795,10 +786,12 @@
     }
 
     selectActivityCard(targetIdx, false);
-    setTimeout(() => {
-      const activeCard = document.getElementById(`activity-card-${targetIdx}`);
-      if (activeCard) activeCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }, 200);
+    
+    // 💡 每次重新渲染列表(進入當日)時，強制將滾動條重置回最上方
+    const timelineContainer = document.querySelector('.timeline-container');
+    if (timelineContainer) {
+      timelineContainer.scrollTop = 0;
+    }
   }
 
   function handleCardClick(index) {
