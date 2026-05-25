@@ -356,7 +356,7 @@
     transition: transform 0.3s ease, font-size 0.4s ease;
     pointer-events: auto; 
     cursor: pointer;      
-    z-index: 10000;       
+    z-index: 10000;        
   }
   .floor-container.active .floor-title-3d { font-size: 32px; }
 
@@ -485,7 +485,7 @@
               </button>
               <!-- 隱藏的年份下拉選單 -->
               <div id="yearDropdown" class="year-dropdown">
-                  <!-- JS 動態生成 -->
+                 <!-- JS 動態生成 -->
               </div>
               <span id="calendarMonthText" style="margin-left: 4px; font-size: 16px;"></span>
             </div>
@@ -712,11 +712,12 @@
   setInterval(updateClock, 1000);
 
   // ==========================================
-  // 解析線上 Excel
+  // 解析線上 Excel (帶入破除快取機制)
   // ==========================================
   async function fetchOnlineExcel() {
     const fileId = '1Qejre9LK6vA-mt9y4nvn8A6C2pcqhHHd5Dt4my80jkw';
-    const exportUrl = `https://docs.google.com/spreadsheets/d/${fileId}/export?format=csv`;
+    const timestamp = new Date().getTime(); // 產生唯一時間戳，強制破除快取
+    const exportUrl = `https://docs.google.com/spreadsheets/d/${fileId}/export?format=csv&t=${timestamp}`;
 
     const proxies = [
       `https://corsproxy.io/?${encodeURIComponent(exportUrl)}`,
@@ -1352,7 +1353,7 @@
     evt.stopPropagation(); activeSpaceIndex = index; dragMode = mode;
     updatePropertiesPanel(); drawDesignerCanvas();
     const coords = getMousePosition(evt); dragStartCoords = { x: coords.x, y: coords.y };
-    const space = floorLayoutConfig[currentEditingFloorIndex].spaces[index];
+    const space = floorLayoutConfig[currentEditingFloorIndex].spaces[activeSpaceIndex];
     originalRectCoords = { x: space.x, y: space.y, w: space.width, h: space.height };
     window.addEventListener('mousemove', handleDrag); window.addEventListener('mouseup', endDrag);
   }
