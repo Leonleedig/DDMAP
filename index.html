@@ -290,7 +290,7 @@
   }
 
   /* =========================================
-     [視圖 B] 網頁原生版面：月曆與本月活動清單
+     [視圖 B] 網頁原生版面：月曆與當月活動清單
      ========================================= */
   #calendarView {
     background: var(--bg-color);
@@ -336,7 +336,7 @@
   .cal-cell.is-today { color: #ffffff; background: rgba(255,255,255,0.08); }
   .cal-cell.is-selected { background: var(--accent-red) !important; color: #ffffff !important; font-weight: bold; }
 
-  /* 本月活動原生清單容器 */
+  /* 當月活動原生清單容器 */
   .cal-month-list {
     flex: 1;
     overflow-y: auto;
@@ -433,7 +433,7 @@
   </div>
 
   <!-- =========================================
-       [視圖 B] 網頁原生版面：月曆與本月清單
+       [視圖 B] 網頁原生版面：活動月曆與當月活動列表
        ========================================= -->
   <div id="calendarView" class="view-page hidden">
 
@@ -617,10 +617,12 @@
     }
   }
 
-  // 4. 獲取試算表資料
+  // 4. 獲取試算表資料 
+  // 💡 已新增時間戳記 (Cache-Busting) 強制破除前端快取
   async function fetchOnlineExcel() {
     const fileId = '1Qejre9LK6vA-mt9y4nvn8A6C2pcqhHHd5Dt4my80jkw';
-    const exportUrl = `https://docs.google.com/spreadsheets/d/${fileId}/export?format=csv`;
+    const timestamp = new Date().getTime(); // 產生唯一時間戳
+    const exportUrl = `https://docs.google.com/spreadsheets/d/${fileId}/export?format=csv&t=${timestamp}`;
     const proxies = [
       `https://corsproxy.io/?${encodeURIComponent(exportUrl)}`,
       `https://api.allorigins.win/raw?url=${encodeURIComponent(exportUrl)}`,
@@ -1047,7 +1049,7 @@
     initMatrixDOM();
     populateYearDropdown();
     changeDateOffset(0); 
-    await fetchOnlineExcel();
+    await fetchOnlineExcel(); // 將以破解快取的 URL 取得最新資料
     renderActivityList();
 
     setInterval(async () => {
