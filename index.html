@@ -133,7 +133,7 @@
   .space-box.status-free { background: var(--free-color); }
   .space-box.status-free .space-name { opacity: 0.35; font-weight: normal; }
   
-  /* 💡 當日有其他預約的區塊 (50% opacity of conflict color) */
+  /* 💡 當日有其他預約的區塊 (20% opacity of conflict color) */
   .space-box.status-booked-other { background: rgba(244, 63, 94, 0.2); }
   .space-box.status-booked-other .space-name { opacity: 0.85; font-weight: normal; }
   .space-box.status-booked-other .space-status-txt { display: block; color: rgba(255, 255, 255, 0.6); }
@@ -499,15 +499,19 @@
           <input type="text" id="regApplicant" class="reg-input" placeholder="請輸入姓名或單位" required>
         </div>
         
-        <!-- 底部雙操作按鈕 -->
-        <div style="display: flex; gap: 12px; margin-top: 10px;">
+        <!-- 底部三操作按鈕：取消(關閉/刪除)、送出、回首頁 -->
+        <div style="display: flex; gap: 8px; margin-top: 10px;">
           <!-- 預設模式的取消(關閉)按鈕 -->
-          <button type="button" id="btnCancelReg" class="btn-nav" onclick="closeRegSheet()" style="flex: 1; padding: 16px; background: transparent; border: 1px solid var(--border-color); color: var(--text-muted); border-radius: 12px; font-size: 16px; font-weight: bold;">取消</button>
+          <button type="button" id="btnCancelReg" class="btn-nav" onclick="closeRegSheet()" style="flex: 1; padding: 14px 4px; background: transparent; border: 1px solid var(--border-color); color: var(--text-muted); border-radius: 12px; font-size: 15px; font-weight: bold;">取消</button>
           
           <!-- 編輯模式專用的紅框取消申請(刪除)按鈕 -->
-          <button type="button" id="btnDeleteReg" class="btn-nav hidden" onclick="promptDelete()" style="flex: 1; padding: 16px; background: transparent; border: 1px solid var(--conflict-color); color: var(--conflict-color); border-radius: 12px; font-size: 16px; font-weight: bold;">取消申請</button>
+          <button type="button" id="btnDeleteReg" class="btn-nav hidden" onclick="promptDelete()" style="flex: 1; padding: 14px 4px; background: transparent; border: 1px solid var(--conflict-color); color: var(--conflict-color); border-radius: 12px; font-size: 15px; font-weight: bold;">取消申請</button>
           
-          <button type="submit" id="btnSubmitReg" style="flex: 2; padding: 16px; background: var(--accent-red); color: #fff; border: none; border-radius: 12px; font-size: 16px; font-weight: bold;">確認送出申請</button>
+          <!-- 送出/儲存按鈕 -->
+          <button type="submit" id="btnSubmitReg" style="flex: 1; padding: 14px 4px; background: var(--accent-red); color: #fff; border: none; border-radius: 12px; font-size: 15px; font-weight: bold;">確認送出申請</button>
+          
+          <!-- 回首頁按鈕 -->
+          <button type="button" class="btn-nav" onclick="closeRegSheet()" style="flex: 1; padding: 14px 4px; background: rgba(255,255,255,0.08); color: #fff; border: none; border-radius: 12px; font-size: 15px; font-weight: bold;">回首頁</button>
         </div>
       </form>
     </div>
@@ -987,7 +991,7 @@
       }
     });
 
-    // 💡 第一層：將「當日有預約，但當前時間空閒」的區塊標示出來 (50% 紅色)
+    // 💡 第一層：將「當日有預約，但當前時間空閒」的區塊標示出來 (20% 紅色)
     Object.keys(daySpaceUsageMap).forEach(id => {
       if (!spaceUsageMap[id]) { // 代表這個時間點沒事，但今天其他時間有事
         const box = document.getElementById(`grid-${id}`); 
