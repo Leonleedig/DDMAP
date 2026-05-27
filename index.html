@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>分院活動空間一覽 (行動通訊優化版)</title>
+<title>分院活動空間一覽</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 <style>
   :root {
@@ -19,7 +19,7 @@
   }
 
   body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang TC', 'Microsoft JhengHei', sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC", "Microsoft JhengHei", sans-serif;
     background-color: var(--bg-color);
     margin: 0;
     padding: 0;
@@ -41,7 +41,7 @@
     scrollbar-width: none !important;
   }
 
-  /* 💡 原生視圖容器切換 (Native View Pages) */
+  /* 💡 原生視圖容器切換 */
   .view-page {
     display: flex;
     flex-direction: column;
@@ -133,6 +133,11 @@
   .space-box.status-free { background: var(--free-color); }
   .space-box.status-free .space-name { opacity: 0.35; font-weight: normal; }
   
+  /* 💡 當日有其他預約的區塊 (50% opacity of conflict color) */
+  .space-box.status-booked-other { background: rgba(244, 63, 94, 0.2); }
+  .space-box.status-booked-other .space-name { opacity: 0.85; font-weight: normal; }
+  .space-box.status-booked-other .space-status-txt { display: block; color: rgba(255, 255, 255, 0.6); }
+
   .space-box.status-booked { background: var(--booked-color); }
   .space-box.status-booked .space-name { opacity: 1; }
   .space-box.status-booked .space-status-txt { display: block; color: #fecdd3; }
@@ -149,13 +154,12 @@
     100% { box-shadow: inset 0 0 14px rgba(239, 68, 68, 0.7); }
   }
 
-  /* ⏳ 下半部：智慧時間軸活動清單 (滾動區域) */
   .timeline-container {
     flex: 1;
-    overflow-y: auto; /* 💡 確保只有此區塊可以垂直滾動 */
+    overflow-y: auto; 
     background: rgba(24, 24, 27, 0.4);
     padding: 12px;
-    padding-bottom: 96px; /* 💡 為右下角懸浮膠囊預留安全操作邊距，滑到底也不會被遮住 */
+    padding-bottom: 96px; 
     -webkit-overflow-scrolling: touch;
   }
   .activity-stream {
@@ -164,7 +168,6 @@
     gap: 10px;
   }
   
-  /* 🗂 手機專用摺疊開盒卡片 */
   .mobile-card {
     background: var(--panel-bg);
     border: 1px solid var(--border-color);
@@ -288,13 +291,13 @@
   }
 
   /* =========================================
-     [視圖 B] 網頁原生版面：月曆與當月活動清單
+     [視圖 B] 網頁原生版面：活動月曆
      ========================================= */
   #calendarView {
     background: var(--bg-color);
     padding: 16px 20px 24px 20px;
     box-sizing: border-box;
-    z-index: 2000; /* 原生層級覆蓋 */
+    z-index: 2000; 
   }
   .btn-nav {
     background: rgba(255, 255, 255, 0.08);
@@ -308,19 +311,10 @@
     display: flex; gap: 8px; align-items: stretch; margin-bottom: 20px;
     flex-shrink: 0;
   }
-  .cal-sheet-header > button {
-    flex: 1;
-    padding: 8px 0;
-  }
+  .cal-sheet-header > button { flex: 1; padding: 8px 0; }
   .cal-sheet-title { 
-    flex: 1; 
-    display: flex; 
-    justify-content: center; 
-    align-items: center; 
-    font-size: 18px; 
-    color: white; 
-    font-weight: bold; 
-    white-space: nowrap; 
+    flex: 1; display: flex; justify-content: center; align-items: center; 
+    font-size: 18px; color: white; font-weight: bold; white-space: nowrap; 
   }
   .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 12px; text-align: center; }
   .cal-day-lbl { font-size: 14px; color: var(--text-muted); font-weight: bold; padding-bottom: 10px; }
@@ -334,51 +328,20 @@
   .cal-cell.is-today { color: #ffffff; background: rgba(255,255,255,0.08); }
   .cal-cell.is-selected { background: var(--accent-red) !important; color: #ffffff !important; font-weight: bold; }
 
-  /* 當月活動原生清單容器 */
   .cal-month-list {
-    flex: 1;
-    overflow-y: auto;
-    margin-bottom: 12px;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    -webkit-overflow-scrolling: touch;
-    min-height: 0; 
+    flex: 1; overflow-y: auto; margin-bottom: 12px;
+    display: flex; flex-direction: column; gap: 4px;
+    -webkit-overflow-scrolling: touch; min-height: 0; 
   }
   .cal-month-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 14px 8px;
-    border-bottom: 1px solid var(--border-color);
-    font-size: 14px;
-    cursor: pointer;
+    display: flex; align-items: center; gap: 12px; padding: 14px 8px;
+    border-bottom: 1px solid var(--border-color); font-size: 14px; cursor: pointer;
   }
   .cal-month-row:active { background: rgba(255, 255, 255, 0.05); }
-  .cal-month-date {
-    font-family: monospace;
-    color: var(--conflict-color); 
-    font-weight: 700;
-    flex-shrink: 0;
-    width: 32px;
-  }
-  .cal-month-time {
-    font-family: monospace;
-    color: var(--text-muted);
-    font-size: 13px;
-    flex-shrink: 0;
-    width: 82px;
-  }
-  .cal-month-name {
-    font-weight: bold;
-    color: #ffffff;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    flex: 1;
-  }
+  .cal-month-date { font-family: monospace; color: var(--conflict-color); font-weight: 700; flex-shrink: 0; width: 32px; }
+  .cal-month-time { font-family: monospace; color: var(--text-muted); font-size: 13px; flex-shrink: 0; width: 82px; }
+  .cal-month-name { font-weight: bold; color: #ffffff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; }
 
-  /* 年份跳轉下拉式選單 */
   .year-opt {
     padding: 12px; cursor: pointer; text-align: center;
     border-bottom: 1px solid var(--border-color); font-family: monospace;
@@ -387,40 +350,70 @@
   .year-opt:active { background: var(--booked-color); color: #ffffff; }
   .year-opt:last-child { border-bottom: none; }
 
-  /* 💡 Toast 輕提示系統 */
-  .toast-container {
-    position: fixed; bottom: 30px; left: 50%;
-    transform: translateX(-50%) translateY(100px);
-    background: rgba(24, 24, 27, 0.95);
-    border: 1px solid var(--border-color);
-    padding: 12px 24px; border-radius: 30px;
-    color: #ffffff; font-size: 14px; font-weight: 500;
-    z-index: 9999; box-shadow: 0 10px 25px rgba(0,0,0,0.4);
-    opacity: 0; transition: transform 0.3s, opacity 0.3s;
-    pointer-events: none; white-space: nowrap;
+  /* =========================================
+     [視圖 C] 彈出式登記預約面板
+     ========================================= */
+  .sheet-mask {
+    position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+    background: rgba(0,0,0,0.65); z-index: 2999; display: none;
+    backdrop-filter: blur(2px);
   }
-  .toast-container.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+  .sheet-mask.show { display: block; }
+
+  .action-sheet {
+    position: fixed; bottom: 0; left: 0; width: 100vw; height: 85vh;
+    background: var(--bg-color); border-top: 2px solid var(--border-color);
+    border-radius: 20px 20px 0 0; z-index: 3000;
+    transform: translateY(100%); transition: transform 0.35s cubic-bezier(0.25, 1, 0.5, 1);
+    padding: 16px 20px 24px 20px; box-sizing: border-box;
+    display: flex; flex-direction: column; box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.5);
+  }
+  .action-sheet.show { transform: translateY(0); }
+  .action-sheet::before {
+    content: ""; width: 40px; height: 5px; background: #3f3f46;
+    border-radius: 3px; align-self: center; margin-bottom: 15px; flex-shrink: 0;
+  }
+
+  /* 下拉與文字輸入框通用樣式 */
+  .reg-input {
+    background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border-color);
+    color: #ffffff; padding: 14px; border-radius: 8px; font-size: 16px; font-family: inherit;
+    transition: border-color 0.2s; width: 100%; box-sizing: border-box;
+  }
+  .reg-input:focus { outline: none; border-color: var(--accent-red); background: rgba(255,255,255,0.08); }
+  
+  /* 針對 <select> 清除原生樣式，統一風格 */
+  select.reg-input {
+    appearance: none; -webkit-appearance: none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2371717a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+    background-repeat: no-repeat; background-position: right 10px center; background-size: 1em;
+  }
+
+  /* 💡 Toast 輕提示系統 (移至螢幕正中央) */
+  .toast-container {
+    position: fixed; top: 50%; left: 50%;
+    transform: translate(-50%, -50%) scale(0.9);
+    background: rgba(24, 24, 27, 0.95); border: 1px solid var(--border-color);
+    padding: 16px 24px; border-radius: 12px; color: #ffffff; font-size: 15px; font-weight: 500;
+    z-index: 9999; box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+    opacity: 0; transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease;
+    pointer-events: none; white-space: nowrap; text-align: center;
+  }
+  .toast-container.show { transform: translate(-50%, -50%) scale(1); opacity: 1; }
 </style>
 </head>
 <body>
 
   <!-- =========================================
-       [視圖 A] 主畫面：便當矩陣與排程時間軸
+       [視圖 A] 主畫面
        ========================================= -->
   <div id="mainView" class="view-page">
-    <!-- 便當分塊矩陣看板 -->
-    <div class="matrix-container" id="matrixContainer">
-      <!-- 由 JS 動態繪製 -->
-    </div>
+    <div class="matrix-container" id="matrixContainer"></div>
 
-    <!-- 活動時間軸流 -->
     <div class="timeline-container">
-      <div class="activity-stream" id="activityStreamItems">
-        <!-- 摺疊卡片區 -->
-      </div>
+      <div class="activity-stream" id="activityStreamItems"></div>
     </div>
 
-    <!-- 右下角大拇指操作導航膠囊 -->
     <div class="floating-nav-capsule">
       <button class="btn-floating-arrow" onclick="changeDateOffset(-1)">◀</button>
       <button class="btn-floating-trigger" onclick="openCalendarView()">
@@ -431,76 +424,121 @@
   </div>
 
   <!-- =========================================
-       [視圖 B] 網頁原生版面：活動月曆與當月活動列表
+       [視圖 B] 網頁原生版面：活動月曆
        ========================================= -->
   <div id="calendarView" class="view-page hidden">
-
     <div class="cal-sheet-header">
       <button class="btn-nav" onclick="changeCalendarMonth(-1)">上個月</button>
       <div class="cal-sheet-title" id="calSheetTitle">
-        <!-- 西元年下拉選單 -->
         <div style="position: relative; display: inline-block;">
           <span id="calYearBtn" style="cursor: pointer; text-decoration: underline; text-underline-offset: 4px; padding: 2px 8px; border-radius: 6px; background: rgba(255,255,255,0.06);" onclick="toggleYearDropdown(event)">2026</span>
-          <div id="yearDropdownMenu" class="hidden" style="position: absolute; top: 110%; left: 50%; transform: translateX(-50%); background: #18181b; border: 1px solid var(--border-color); border-radius: 8px; z-index: 2100; max-height: 200px; overflow-y: auto; width: 100px; box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
-            <!-- 由 JS 動態填塞年份 -->
-          </div>
+          <div id="yearDropdownMenu" class="hidden" style="position: absolute; top: 110%; left: 50%; transform: translateX(-50%); background: #18181b; border: 1px solid var(--border-color); border-radius: 8px; z-index: 2100; max-height: 200px; overflow-y: auto; width: 100px; box-shadow: 0 10px 25px rgba(0,0,0,0.5);"></div>
         </div>
-        <span>年 </span>
-        <span id="calMonthVal">5</span>
-        <span>月</span>
+        <span>年 </span><span id="calMonthVal">5</span><span>月</span>
       </div>
       <button class="btn-nav" onclick="changeCalendarMonth(1)">下個月</button>
     </div>
     
-    <!-- 互斥切換區域：日曆網格 V.S. 滿版列表 -->
     <div class="cal-grid" id="calGridItems"></div>
     <div class="cal-month-list hidden" id="calMonthListItems"></div>
 
-    <!-- 底部操作區，增加 padding-bottom 安全邊距以避開手機原生底部虛擬導覽列 -->
     <div style="margin-top: auto; padding-top: 16px; padding-bottom: 50px; flex-shrink: 0; display: flex; gap: 12px;">
       <button class="btn-nav" id="btnToggleCalMode" onclick="toggleCalViewMode()" style="flex: 1; padding: 14px; background: rgba(255,255,255,0.08); border: 1px solid var(--border-color); color: #ffffff; border-radius: 12px; font-weight: bold;">當月活動列表</button>
       <button class="btn-nav" style="flex: 1; padding: 14px; background: #ffffff; color: #09090b; border: none; border-radius: 12px; font-weight: bold;" onclick="changeDateOffset(0); closeCalendarView();">返回今天</button>
     </div>
   </div>
 
-  <!-- 💡 全局 Toast 提示元件 (目前功能凍結隱藏) -->
-  <div id="toastBox" class="toast-container hidden">提示訊息</div>
+  <!-- =========================================
+       [視圖 C] 彈出式預約與修改面板
+       ========================================= -->
+  <div class="sheet-mask" id="regMask" onclick="closeRegSheet()"></div>
+  <div class="action-sheet" id="regSheet">
+    <div style="display: flex; justify-content: center; align-items: center; margin-bottom: 15px; flex-shrink: 0; position: relative;">
+      <div id="regSheetTitle" style="font-size: 18px; color: white; font-weight: bold;">預約／修改活動</div>
+    </div>
+    
+    <div style="flex: 1; overflow-y: auto; padding-top: 5px; padding-bottom: 30px;">
+      <form id="regForm" onsubmit="submitRegistration(event)">
+        <!-- 自動帶入的唯讀資訊 -->
+        <div style="background: rgba(255,255,255,0.03); padding: 14px; border-radius: 10px; margin-bottom: 20px; border: 1px solid var(--border-color);">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+            <span style="color: var(--text-muted); font-size: 13px;">預約空間</span>
+            <span id="regSpaceName" style="color: var(--accent-red); font-size: 15px; font-weight: bold;">--</span>
+          </div>
+          <div style="display: flex; justify-content: space-between;">
+            <span style="color: var(--text-muted); font-size: 13px;">活動日期</span>
+            <span id="regDateText" style="color: #fff; font-size: 15px; font-family: monospace;">--</span>
+          </div>
+        </div>
+        
+        <!-- 下拉式活動時間選擇器 -->
+        <div style="margin-bottom: 20px;">
+          <label style="color: var(--text-muted); font-size: 14px; display: block; margin-bottom: 8px;">活動時間</label>
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <select id="regStartHour" class="reg-input" style="padding: 12px 10px; flex: 1; min-width: 0;" onchange="toggleTimeSelects()"></select>
+            <select id="regStartMin" class="reg-input" style="padding: 12px 10px; flex: 1; min-width: 0;">
+              <option value="00">00分</option><option value="30">30分</option>
+            </select>
+            <span id="timeSeparator" style="color: var(--text-muted);">至</span>
+            <div id="regEndContainer" style="display: flex; gap: 8px; flex: 2;">
+              <select id="regEndHour" class="reg-input" style="padding: 12px 10px; flex: 1; min-width: 0;"></select>
+              <select id="regEndMin" class="reg-input" style="padding: 12px 10px; flex: 1; min-width: 0;">
+                <option value="00">00分</option><option value="30">30分</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        
+        <div style="margin-bottom: 20px;">
+          <label style="color: var(--text-muted); font-size: 14px; display: block; margin-bottom: 8px;">活動名稱</label>
+          <input type="text" id="regActName" class="reg-input" placeholder="例如：共修 / 會議" required>
+        </div>
+        
+        <div style="margin-bottom: 20px;">
+          <label style="color: var(--text-muted); font-size: 14px; display: block; margin-bottom: 8px;">申請人 / 單位</label>
+          <input type="text" id="regApplicant" class="reg-input" placeholder="請輸入姓名或單位" required>
+        </div>
+        
+        <!-- 底部雙操作按鈕 -->
+        <div style="display: flex; gap: 12px; margin-top: 10px;">
+          <!-- 預設模式的取消(關閉)按鈕 -->
+          <button type="button" id="btnCancelReg" class="btn-nav" onclick="closeRegSheet()" style="flex: 1; padding: 16px; background: transparent; border: 1px solid var(--border-color); color: var(--text-muted); border-radius: 12px; font-size: 16px; font-weight: bold;">取消</button>
+          
+          <!-- 編輯模式專用的紅框取消申請(刪除)按鈕 -->
+          <button type="button" id="btnDeleteReg" class="btn-nav hidden" onclick="promptDelete()" style="flex: 1; padding: 16px; background: transparent; border: 1px solid var(--conflict-color); color: var(--conflict-color); border-radius: 12px; font-size: 16px; font-weight: bold;">取消申請</button>
+          
+          <button type="submit" id="btnSubmitReg" style="flex: 2; padding: 16px; background: var(--accent-red); color: #fff; border: none; border-radius: 12px; font-size: 16px; font-weight: bold;">確認送出申請</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 💡 客製化二次確認彈出視窗 (取代原生 confirm) -->
+  <div class="sheet-mask" id="confirmMask" style="z-index: 4000; display: none;" onclick="closeConfirmModal()"></div>
+  <div id="confirmModal" style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: var(--panel-bg); border: 1px solid var(--border-color); border-radius: 16px; padding: 24px; z-index: 4001; width: 80%; max-width: 320px; display: none; flex-direction: column; gap: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.8);">
+    <div style="color: white; font-size: 18px; font-weight: bold; text-align: center;">確認取消申請</div>
+    <div style="color: var(--text-muted); font-size: 15px; text-align: center; line-height: 1.5;">確定要取消這筆預約申請嗎？<br>此動作執行後將無法復原。</div>
+    <div style="display: flex; gap: 12px; margin-top: 10px;">
+      <button type="button" class="btn-nav" onclick="closeConfirmModal()" style="flex: 1; padding: 14px; background: transparent; border: 1px solid var(--border-color); color: var(--text-muted); border-radius: 10px; font-size: 15px;">保留</button>
+      <button type="button" class="btn-nav" onclick="executeDelete()" style="flex: 1; padding: 14px; background: var(--conflict-color); color: white; border: none; border-radius: 10px; font-size: 15px; font-weight: bold;">確定取消</button>
+    </div>
+  </div>
+
+  <!-- 💡 全局 Toast 提示元件 -->
+  <div id="toastBox" class="toast-container">提示訊息</div>
 
 <script>
-  // 1. 空間定義與彈性權重比例
+  // =========================================================
+  // 💡 請填入您重新部署後取得的 GAS Web App URL
+  // =========================================================
+  const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzmd2V9jDz1VclpCLAkl4MnsBIbzzM5nv-VGc-GBF0mbPw5pdZ-109gKaKW3eNEv1mz/exec";
+  // =========================================================
+
   const mobileMatrixConfig = [
-    {
-      "level": "4F",
-      "spaces": [
-        { "id": "4F-Top", "name": "寮房", "flex": 1.2 },
-        { "id": "4F-Mid", "name": "歡喜地", "flex": 1.0 }
-      ]
-    },
-    {
-      "level": "3F",
-      "spaces": [
-        { "id": "3F-Top", "name": "大殿", "flex": 1.2 },
-        { "id": "3F-BR", "name": "大殿外廊", "flex": 1.0 }
-      ]
-    },
-    {
-      "level": "2F",
-      "spaces": [
-        { "id": "2F-Big", "name": "藝文走廊", "flex": 0.9 },
-        { "id": "2F-SmallA", "name": "法堂二", "flex": 0.8 },
-        { "id": "2F-SmallB", "name": "法堂一", "flex": 0.8 },
-        { "id": "2F-New4", "name": "辦公室", "flex": 0.9 }
-      ]
-    },
-    {
-      "level": "1F",
-      "spaces": [
-        { "id": "1F-A", "name": "齋堂", "flex": 1.0 },
-        { "id": "1F-B", "name": "大寮", "flex": 0.8 },
-        { "id": "1F-New3", "name": "知客", "flex": 1.0 },
-        { "id": "1F-New4", "name": "輕食區", "flex": 0.8 }
-      ]
-    }
+    { "level": "4F", "spaces": [{ "id": "4F-Top", "name": "寮房", "flex": 1.2 }, { "id": "4F-Mid", "name": "歡喜地", "flex": 1.0 }] },
+    { "level": "3F", "spaces": [{ "id": "3F-Top", "name": "大殿", "flex": 1.2 }, { "id": "3F-BR", "name": "大殿外廊", "flex": 1.0 }] },
+    { "level": "2F", "spaces": [{ "id": "2F-Big", "name": "藝文走廊", "flex": 0.9 }, { "id": "2F-SmallA", "name": "法堂二", "flex": 0.8 }, { "id": "2F-SmallB", "name": "法堂一", "flex": 0.8 }, { "id": "2F-New4", "name": "辦公室", "flex": 0.9 }] },
+    { "level": "1F", "spaces": [{ "id": "1F-A", "name": "齋堂", "flex": 1.0 }, { "id": "1F-B", "name": "大寮", "flex": 0.8 }, { "id": "1F-New3", "name": "知客", "flex": 1.0 }, { "id": "1F-New4", "name": "輕食區", "flex": 0.8 }] }
   ];
 
   let allSheetData = []; 
@@ -510,74 +548,57 @@
   let globalSelectedDateStr = "";
   let calendarViewDate = new Date();
   let toastTimer = null;
-  let calViewMode = "grid"; // "grid" 顯示日曆, "list" 顯示月清單
+  let calViewMode = "grid"; 
+  let currentEditBooking = null; // 紀錄目前正在編輯的活動
 
-  // 顯示自訂 Toast 提示
   function showToast(msg) {
-    // 💡 暫時凍結 Toast 通知功能，未來近一步開發預約功能時再啟用
-    console.log("[Toast 隱藏] " + msg);
-    return;
+    const toast = document.getElementById('toastBox');
+    toast.textContent = msg;
+    toast.classList.remove('hidden');
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { toast.classList.remove('show'); }, 2500);
   }
 
-  // 2. 語意解析引擎
   function extractSpaceIds(rawLocation) {
     if (!rawLocation) return [];
     const loc = String(rawLocation).toLowerCase();
     const ids = new Set();
-
     if (loc.includes("全區1-4") || loc.includes("1-4樓") || loc.includes("全棟") || loc.includes("一到四樓") || loc === "全區") {
-      mobileMatrixConfig.forEach(floor => floor.spaces.forEach(s => ids.add(s.id)));
-      return Array.from(ids);
+      mobileMatrixConfig.forEach(floor => floor.spaces.forEach(s => ids.add(s.id))); return Array.from(ids);
     }
-    if (loc.includes("齋堂")) ids.add("1F-A");
-    if (loc.includes("大寮")) ids.add("1F-B");
-    if (loc.includes("知客")) ids.add("1F-New3");
-    if (loc.includes("輕食")) ids.add("1F-New4");
-    if (loc.includes("法堂一二") || loc.includes("法堂12")) {
-      ids.add("2F-SmallA"); ids.add("2F-SmallB");
-    } else {
+    if (loc.includes("齋堂")) ids.add("1F-A"); if (loc.includes("大寮")) ids.add("1F-B");
+    if (loc.includes("知客")) ids.add("1F-New3"); if (loc.includes("輕食")) ids.add("1F-New4");
+    if (loc.includes("法堂一二") || loc.includes("法堂12")) { ids.add("2F-SmallA"); ids.add("2F-SmallB"); } 
+    else {
       if (loc.includes("法堂二") || loc.includes("法堂2")) ids.add("2F-SmallA");
       if (loc.includes("法堂一") || loc.includes("法堂1")) ids.add("2F-SmallB");
-      if (loc.includes("法堂") && !loc.includes("法堂一") && !loc.includes("法堂二") && !loc.includes("法堂1") && !loc.includes("法堂2")) {
-        ids.add("2F-SmallB");
-      }
+      if (loc.includes("法堂") && !loc.includes("法堂一") && !loc.includes("法堂二") && !loc.includes("法堂1") && !loc.includes("法堂2")) ids.add("2F-SmallB");
     }
-    if (loc.includes("走廊") || loc.includes("藝文")) ids.add("2F-Big");
-    if (loc.includes("辦公")) ids.add("2F-New4");
+    if (loc.includes("走廊") || loc.includes("藝文")) ids.add("2F-Big"); if (loc.includes("辦公")) ids.add("2F-New4");
     if (loc.includes("外廊") || loc.includes("大殿外")) ids.add("3F-BR");
     let tempLoc = loc.replace(/大殿外廊/g, "").replace(/大殿外/g, "");
     if (tempLoc.includes("大殿")) ids.add("3F-Top");
-    if (loc.includes("寮房") || loc.includes("住宿")) ids.add("4F-Top");
-    if (loc.includes("歡喜地")) ids.add("4F-Mid");
-
+    if (loc.includes("寮房") || loc.includes("住宿")) ids.add("4F-Top"); if (loc.includes("歡喜地")) ids.add("4F-Mid");
     return Array.from(ids);
   }
 
-  // 3. 初始化繪製便當矩陣外殼
   function initMatrixDOM() {
     const container = document.getElementById('matrixContainer');
     let html = '';
     mobileMatrixConfig.forEach(floor => {
-      html += `<div class="matrix-row">
-        <div class="matrix-floor-lbl">${floor.level}</div>
-        <div class="matrix-spaces-group">`;
+      html += `<div class="matrix-row"><div class="matrix-floor-lbl">${floor.level}</div><div class="matrix-spaces-group">`;
       floor.spaces.forEach(space => {
         html += `<div id="grid-${space.id}" class="space-box status-free" style="flex: ${space.flex};" onclick="handleSpaceClick('${space.id}', '${space.name}', '${floor.level}')">
-          <div class="space-name">${space.name}</div>
-          <div class="space-status-txt"></div>
-        </div>`;
+          <div class="space-name">${space.name}</div><div class="space-status-txt"></div></div>`;
       });
       html += `</div></div>`;
     });
     container.innerHTML = html;
   }
 
+  // 💡 智慧判斷點擊處理
   function handleSpaceClick(spaceId, spaceName, floorLevel) {
-    if (currentDayActivities.length === 0) {
-      showToast(`🟢 ${floorLevel} ${spaceName} 目前整日空閒`);
-      return;
-    }
-
     let pivotTime = -1;
     if (currentSelectedIndex >= 0 && currentDayActivities[currentSelectedIndex]) {
       pivotTime = currentDayActivities[currentSelectedIndex].start;
@@ -586,257 +607,174 @@
       pivotTime = now.getHours() + (now.getMinutes() / 60);
     }
 
-    const matchedIndex = currentDayActivities.findIndex(act => {
-      return act.ids.includes(spaceId) && (pivotTime >= act.start && pivotTime < act.end);
-    });
+    if (currentDayActivities.length === 0) {
+      openRegSheet(spaceId, spaceName, floorLevel, pivotTime, null);
+      return;
+    }
+
+    const matchedIndex = currentDayActivities.findIndex(act => act.ids.includes(spaceId) && (pivotTime >= act.start && pivotTime < act.end));
 
     if (matchedIndex !== -1) {
-      selectActivityCard(matchedIndex, false);
-      const activeCard = document.getElementById(`activity-card-${matchedIndex}`);
-      if (activeCard) activeCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      showToast(`🎯 已選定 ${floorLevel} ${spaceName} 的目前活動`);
-    } else {
-      const otherReserve = currentDayActivities.find(act => act.ids.includes(spaceId));
-      if (otherReserve) {
-        const otherIdx = currentDayActivities.indexOf(otherReserve);
-        selectActivityCard(otherIdx, false);
-        const activeCard = document.getElementById(`activity-card-${otherIdx}`);
-        if (activeCard) activeCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        showToast(`📅 已為您跳轉至此空間的今日排程`);
+      const act = currentDayActivities[matchedIndex];
+      // 如果這筆資料來自工作表3，則進入編輯/取消模式
+      if (act._isSheet3) {
+         openRegSheet(spaceId, spaceName, floorLevel, pivotTime, act);
       } else {
-        showToast(`🟢 ${floorLevel} ${spaceName} 此時段空閒`);
+         selectActivityCard(matchedIndex, false);
+         const activeCard = document.getElementById(`activity-card-${matchedIndex}`);
+         if (activeCard) activeCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+         showToast(`🎯 已定位至 ${floorLevel} ${spaceName} 的活動`);
       }
-    }
-  }
-
-  // 4. 獲取試算表資料 
-  async function fetchOnlineExcel() {
-    const fileId = '1Qejre9LK6vA-mt9y4nvn8A6C2pcqhHHd5Dt4my80jkw';
-    const timestamp = new Date().getTime(); // 產生唯一時間戳
-    const exportUrl = `https://docs.google.com/spreadsheets/d/${fileId}/export?format=csv&t=${timestamp}`;
-    const proxies = [
-      `https://corsproxy.io/?${encodeURIComponent(exportUrl)}`,
-      `https://api.allorigins.win/raw?url=${encodeURIComponent(exportUrl)}`,
-      exportUrl
-    ];
-    let csvText = null;
-    for (const url of proxies) {
-      try {
-        const response = await fetch(url);
-        if (response.ok) {
-          csvText = await response.text();
-          if (csvText && csvText.length > 50 && !csvText.includes('<html')) break;
-        }
-      } catch (e) { console.warn("切換Proxy中..."); }
-    }
-    if (!csvText) {
-      showToast("⚠️ 線上資料庫同步失敗，請確認網路連線。");
-      return;
-    }
-
-    const workbook = XLSX.read(csvText, { type: 'string' });
-    const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-    const rawData = XLSX.utils.sheet_to_json(worksheet, { header: "A", raw: false, defval: "" });
-    const cleanedData = [];
-
-    rawData.forEach(row => {
-      let rawDate = String(row['A'] || '').trim();
-      let parsedDate = new Date(rawDate);
-      if (isNaN(parsedDate.getTime()) || rawDate.length < 5) return;
-      
-      let standardDate = `${parsedDate.getFullYear()}/${String(parsedDate.getMonth() + 1).padStart(2, '0')}/${String(parsedDate.getDate()).padStart(2, '0')}`;
-      let rawTime = String(row['B'] || '').trim().replace(/上午|下午|早上|中午|晚上|半|點|分|\s+/g, '');
-      const match = rawTime.match(/(\d{1,2})[:：]?(\d{2})?[~\-到至]+(\d{1,2})[:：]?(\d{2})?/);
-      if (!match) return;
-
-      let startNum = parseInt(match[1], 10) + (match[2] ? parseInt(match[2], 10)/60 : 0);
-      let endNum = parseInt(match[3], 10) + (match[4] ? parseInt(match[4], 10)/60 : 0);
-      
-      let matchedSpaceIds = extractSpaceIds(String(row['D'] || ''));
-      if (matchedSpaceIds.length > 0) {
-        cleanedData.push({
-          date: standardDate,
-          ids: matchedSpaceIds,
-          start: startNum,
-          end: endNum,
-          activityName: String(row['C'] || '未命名活動').trim(),
-          remarks: String(row['E'] || '').trim(),
-          rawLocation: String(row['D'] || '').trim()
-        });
-      }
-    });
-    allSheetData = cleanedData;
-    calculateConflicts();
-  }
-
-  // 5. 計算當前時間段的佔用與衝突狀態
-  function calculateConflicts() {
-    mobileMatrixConfig.forEach(f => f.spaces.forEach(s => {
-      const box = document.getElementById(`grid-${s.id}`);
-      if (box) {
-        box.className = "space-box status-free";
-        box.querySelector('.space-status-txt').style.display = "none";
-        box.querySelector('.space-status-txt').textContent = "";
-      }
-    }));
-
-    if (currentDayActivities.length === 0) return;
-
-    let pivotTime = -1;
-    if (currentSelectedIndex >= 0 && currentDayActivities[currentSelectedIndex]) {
-      pivotTime = currentDayActivities[currentSelectedIndex].start; 
     } else {
-      const now = new Date();
-      pivotTime = now.getHours() + (now.getMinutes() / 60);
-    }
-
-    const spaceUsageMap = {};
-    currentDayActivities.forEach(act => {
-      if (pivotTime >= act.start && pivotTime < act.end) {
-        act.ids.forEach(id => {
-          if (!spaceUsageMap[id]) spaceUsageMap[id] = [];
-          spaceUsageMap[id].push(act);
-        });
-      }
-    });
-
-    Object.keys(spaceUsageMap).forEach(id => {
-      const box = document.getElementById(`grid-${id}`);
-      if (!box) return;
-      const totalActs = spaceUsageMap[id];
-
-      if (totalActs.length > 1) {
-        box.className = "space-box status-conflict";
-        const statusTxt = box.querySelector('.space-status-txt');
-        statusTxt.style.display = "block";
-        statusTxt.textContent = `💥 衝突(${totalActs.length})`;
-        totalActs.forEach(a => a._hasConflict = true);
-      } else {
-        box.className = "space-box status-booked";
-        const statusTxt = box.querySelector('.space-status-txt');
-        statusTxt.style.display = "block";
-        statusTxt.textContent = totalActs[0].activityName.substring(0,4);
-      }
-    });
-  }
-
-  // 6. 渲染行動端時間流清單
-  function renderActivityList() {
-    const listContainer = document.getElementById('activityStreamItems');
-    listContainer.innerHTML = '';
-    
-    currentDayActivities = allSheetData.filter(item => item.date === globalSelectedDateStr)
-                                       .sort((a, b) => a.start - b.start);
-
-    currentDayActivities.forEach(a => a._hasConflict = false);
-
-    if (currentDayActivities.length === 0) {
-      listContainer.innerHTML = `<div class="no-schedule-msg">暫無活動申請<br><small>(${globalSelectedDateStr})</small></div>`;
-      calculateConflicts();
-      return;
-    }
-
-    currentDayActivities.forEach((item, index) => {
-      const card = document.createElement('div');
-      card.className = 'mobile-card';
-      card.id = `activity-card-${index}`;
-
-      card.innerHTML = `
-        <div class="mobile-card-summary" onclick="handleCardClick(${index})">
-          <div class="card-time-col">
-            <div class="card-time-start">${formatTime(item.start)}</div>
-            <div class="card-time-end">${formatTime(item.end)}</div>
-          </div>
-          <div class="card-title-col">
-            <div class="card-title-lbl">${item.activityName}</div>
-          </div>
-        </div>
-        <div class="mobile-card-details" id="details-${index}">
-          <div class="mobile-card-details-content">
-            <div class="card-details-grid">
-              <div class="details-column">
-                <div class="details-label">申請人/單位</div>
-                <div class="details-val">${item.remarks ? item.remarks : '無'}</div>
-              </div>
-              <div class="details-column">
-                <div class="details-label">使用地點</div>
-                <div class="details-val">${item.rawLocation || '無'}</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      `;
-      listContainer.appendChild(card);
-    });
-
-    let targetIdx = 0;
-    const now = new Date();
-    const todayStr = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')}`;
-    
-    if (globalSelectedDateStr === todayStr) {
-      const currentHour = now.getHours() + (now.getMinutes() / 60);
-      for (let i = 0; i < currentDayActivities.length; i++) {
-        if (currentHour >= currentDayActivities[i].start && currentHour < currentDayActivities[i].end) {
-          targetIdx = i; break;
-        } else if (currentDayActivities[i].start > currentHour) {
-          targetIdx = i; break;
-        }
-        targetIdx = currentDayActivities.length - 1;
-      }
-    }
-
-    selectActivityCard(targetIdx, false);
-    
-    // 💡 每次重新渲染列表(進入當日)時，強制將滾動條重置回最上方
-    const timelineContainer = document.querySelector('.timeline-container');
-    if (timelineContainer) {
-      timelineContainer.scrollTop = 0;
+      openRegSheet(spaceId, spaceName, floorLevel, pivotTime, null);
     }
   }
 
-  function handleCardClick(index) {
-    if (index === currentSelectedIndex) {
-      selectActivityCard(index, true);
+  function decimalToTimeString(dec) {
+    let h = Math.floor(dec);
+    let m = Math.round((dec - h) * 60);
+    if (h >= 24) { h = 23; m = 59; } 
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+  }
+
+  function initTimeOptions() {
+    let hourOptions = '';
+    for(let i = 0; i <= 23; i++) {
+      let h = String(i).padStart(2, '0');
+      hourOptions += `<option value="${h}">${h}時</option>`;
+    }
+    document.getElementById('regStartHour').innerHTML = `<option value="allday">全天</option>` + hourOptions;
+    document.getElementById('regEndHour').innerHTML = hourOptions;
+  }
+
+  function toggleTimeSelects() {
+    const isAllDay = document.getElementById('regStartHour').value === 'allday';
+    document.getElementById('regStartMin').style.display = isAllDay ? 'none' : 'block';
+    document.getElementById('regEndContainer').style.display = isAllDay ? 'none' : 'flex';
+    document.getElementById('timeSeparator').style.display = isAllDay ? 'none' : 'inline-block';
+  }
+
+  // 💡 開啟預約面板 (支援編輯既有資料)
+  function openRegSheet(spaceId, spaceName, floorLevel, pivotTime, existingBooking = null) {
+    currentEditBooking = existingBooking; // 紀錄當前編輯的活動
+    
+    document.getElementById('regMask').classList.add('show');
+    document.getElementById('regSheet').classList.add('show');
+    
+    document.getElementById('regSheetTitle').textContent = existingBooking ? '預約／修改活動' : '新增空間預約';
+    document.getElementById('regSpaceName').textContent = `${floorLevel} ${spaceName}`;
+    document.getElementById('regDateText').textContent = existingBooking ? existingBooking.date : globalSelectedDateStr;
+    
+    if (existingBooking) {
+       let timeParts = existingBooking._rawTime.split('-');
+       if (timeParts.length === 2) {
+          let startStr = timeParts[0].trim();
+          let endStr = timeParts[1].trim();
+
+          if (startStr === "00:00" && endStr === "24:00") {
+             document.getElementById('regStartHour').value = 'allday';
+          } else {
+             document.getElementById('regStartHour').value = startStr.split(':')[0];
+             document.getElementById('regStartMin').value = startStr.split(':')[1];
+             document.getElementById('regEndHour').value = endStr.split(':')[0];
+             document.getElementById('regEndMin').value = endStr.split(':')[1];
+          }
+       }
+       document.getElementById('regActName').value = existingBooking.activityName;
+       document.getElementById('regApplicant').value = existingBooking.remarks;
+       
+       // 顯示刪除按鈕、隱藏純取消按鈕
+       document.getElementById('btnCancelReg').classList.add('hidden');
+       document.getElementById('btnDeleteReg').classList.remove('hidden');
+       document.getElementById('btnSubmitReg').textContent = '儲存修改';
+       
     } else {
-      selectActivityCard(index, false);
+       let startDec = pivotTime;
+       let endDec = pivotTime + 1; 
+       if (endDec > 23.5) endDec = 23.5;
+       
+       const startStr = decimalToTimeString(startDec);
+       const endStr = decimalToTimeString(endDec);
+       
+       document.getElementById('regStartHour').value = startStr.split(':')[0];
+       document.getElementById('regStartMin').value = startStr.split(':')[1] >= '30' ? '30' : '00';
+       document.getElementById('regEndHour').value = endStr.split(':')[0];
+       document.getElementById('regEndMin').value = endStr.split(':')[1] >= '30' ? '30' : '00';
+       
+       document.getElementById('regActName').value = '';
+       document.getElementById('regApplicant').value = '';
+       
+       // 顯示純取消按鈕、隱藏刪除按鈕
+       document.getElementById('btnCancelReg').classList.remove('hidden');
+       document.getElementById('btnDeleteReg').classList.add('hidden');
+       document.getElementById('btnSubmitReg').textContent = '確認送出申請';
     }
+    
+    toggleTimeSelects();
   }
 
-  function selectActivityCard(index, toggleIfSame = false) {
-    const cards = document.querySelectorAll('.mobile-card');
-    
-    if (index === currentSelectedIndex && toggleIfSame) {
-      expandedIndex = (expandedIndex === index) ? -1 : index;
-    } else {
-      currentSelectedIndex = index;
-      expandedIndex = index;
+  function closeRegSheet() {
+    document.getElementById('regMask').classList.remove('show');
+    document.getElementById('regSheet').classList.remove('show');
+    currentEditBooking = null;
+  }
+
+  // 💡 開啟客製化確認彈窗
+  function promptDelete() {
+    if (!currentEditBooking) return;
+    document.getElementById('confirmMask').style.display = 'block';
+    document.getElementById('confirmModal').style.display = 'flex';
+  }
+
+  // 💡 關閉客製化確認彈窗
+  function closeConfirmModal() {
+    document.getElementById('confirmMask').style.display = 'none';
+    document.getElementById('confirmModal').style.display = 'none';
+  }
+
+  // 💡 執行實際的刪除邏輯
+  async function executeDelete() {
+    closeConfirmModal();
+    if (!currentEditBooking) return;
+
+    const btn = document.getElementById('btnDeleteReg');
+    btn.disabled = true;
+    btn.textContent = '刪除中...';
+
+    const payload = {
+      action: 'delete',
+      oldDate: currentEditBooking.date,
+      oldTimeRange: currentEditBooking._rawTime,
+      oldLocation: currentEditBooking.rawLocation
+    };
+
+    if (GAS_WEB_APP_URL.includes("【請填入部署取得的網址】")) {
+       setTimeout(() => {
+          showToast('🎉 取消成功 (模擬測試)');
+          closeRegSheet();
+          btn.disabled = false;
+          btn.textContent = '取消申請';
+       }, 1000);
+       return;
     }
 
-    cards.forEach((c, i) => {
-      const details = document.getElementById(`details-${i}`);
-      if (i === currentSelectedIndex) {
-        c.classList.add('active-item');
-      } else {
-        c.classList.remove('active-item');
-        c.classList.remove('has-conflict-card');
-      }
+    try {
+       await fetch(GAS_WEB_APP_URL, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify(payload)
+       });
 
-      if (details) {
-        if (i === expandedIndex) {
-          details.style.maxHeight = details.scrollHeight + "px";
-        } else {
-          details.style.maxHeight = "0px";
-        }
-      }
-    });
-
-    calculateConflicts();
-
-    if (currentDayActivities[currentSelectedIndex]) {
-      const item = currentDayActivities[currentSelectedIndex];
-      if (item._hasConflict) {
-        cards[currentSelectedIndex]?.classList.add('has-conflict-card');
-      }
+       showToast('🎉 活動已成功取消！');
+       closeRegSheet();
+       setTimeout(() => { fetchOnlineExcel().then(() => renderActivityList()); }, 2000);
+    } catch (e) {
+       console.error(e);
+       showToast('❌ 取消失敗，請檢查網路');
+    } finally {
+       btn.disabled = false;
+       btn.textContent = '取消申請';
     }
   }
 
@@ -846,209 +784,389 @@
     return `${hours.toString().padStart(2, '0')}:${minutes}`;
   }
 
-  // =========================================
-  // 7. 網頁原生切換：日曆與本月活動視圖
-  // =========================================
-  function openCalendarView() {
-    document.getElementById('mainView').classList.add('hidden');
-    document.getElementById('calendarView').classList.remove('hidden');
+  // 💡 送出新增或修改的申請
+  async function submitRegistration(event) {
+    event.preventDefault();
+    const btn = document.getElementById('btnSubmitReg');
     
-    // 初始化視圖為目前全球選定的月份
+    let startStr, endStr;
+    const startHour = document.getElementById('regStartHour').value;
+    
+    if (startHour === 'allday') {
+      startStr = "00:00";
+      endStr = "24:00"; 
+    } else {
+      startStr = `${startHour}:${document.getElementById('regStartMin').value}`;
+      endStr = `${document.getElementById('regEndHour').value}:${document.getElementById('regEndMin').value}`;
+      
+      if (startStr >= endStr) {
+         showToast('❌ 結束時間必須晚於開始時間');
+         return;
+      }
+    }
+
+    const actName = document.getElementById('regActName').value.trim();
+    const applicant = document.getElementById('regApplicant').value.trim();
+    const spaceName = document.getElementById('regSpaceName').textContent;
+    const dateStr = document.getElementById('regDateText').textContent;
+
+    const payload = {
+       action: currentEditBooking ? 'edit' : 'add',
+       date: dateStr,
+       timeRange: `${startStr} - ${endStr}`,
+       activityName: actName,
+       location: spaceName,
+       remarks: applicant
+    };
+
+    // 編輯模式需要帶入舊資料供後端尋找匹配的列
+    if (currentEditBooking) {
+       payload.oldDate = currentEditBooking.date;
+       payload.oldTimeRange = currentEditBooking._rawTime;
+       payload.oldLocation = currentEditBooking.rawLocation;
+    }
+
+    btn.disabled = true;
+    btn.textContent = '寫入連線中...';
+    
+    if (GAS_WEB_APP_URL.includes("【請填入部署取得的網址】")) {
+       setTimeout(() => {
+          showToast(`🎉 作業成功：${actName} (請先替換GAS網址)`);
+          closeRegSheet();
+          btn.disabled = false;
+          btn.textContent = currentEditBooking ? '儲存修改' : '確認送出申請';
+       }, 1500);
+       return;
+    }
+    
+    try {
+       await fetch(GAS_WEB_APP_URL, {
+          method: 'POST',
+          mode: 'no-cors', 
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify(payload)
+       });
+       
+       showToast('🎉 資料已成功寫入！');
+       closeRegSheet();
+       setTimeout(() => { fetchOnlineExcel().then(() => renderActivityList()); }, 2000);
+    } catch (e) {
+       console.error('寫入異常:', e);
+       showToast('❌ 作業失敗，請檢查網路連線');
+    } finally {
+       btn.disabled = false;
+       btn.textContent = currentEditBooking ? '儲存修改' : '確認送出申請';
+    }
+  }
+
+  // ==========================================
+  // 💡 讀取資料：合併工作表 1 與 3
+  // ==========================================
+  async function fetchOnlineExcel() {
+    const fileId = '1Qejre9LK6vA-mt9y4nvn8A6C2pcqhHHd5Dt4my80jkw';
+    const timestamp = new Date().getTime();
+    
+    const exportUrl = `https://docs.google.com/spreadsheets/d/${fileId}/export?format=xlsx&t=${timestamp}`;
+    
+    const proxies = [
+      exportUrl,
+      `https://corsproxy.io/?${encodeURIComponent(exportUrl)}`
+    ];
+    
+    let arrayBuffer = null;
+    for (const url of proxies) {
+      try {
+        const response = await fetch(url);
+        if (response.ok) { 
+           arrayBuffer = await response.arrayBuffer(); 
+           if (arrayBuffer && arrayBuffer.byteLength > 1000) break; 
+        }
+      } catch (e) { console.warn(`節點失敗，切換中：${url}`); }
+    }
+    
+    if (!arrayBuffer) { showToast("⚠️ 讀取失敗，請確認試算表已「公開」或檢查網路連線"); return; }
+
+    try {
+      const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+      let combinedRawData = [];
+
+      if (workbook.SheetNames.length > 0) {
+        const sheet1 = workbook.Sheets[workbook.SheetNames[0]];
+        const data1 = XLSX.utils.sheet_to_json(sheet1, { header: "A", raw: false, defval: "" });
+        combinedRawData = combinedRawData.concat(data1);
+      }
+
+      if (workbook.SheetNames.includes("工作表3")) {
+        const sheet3 = workbook.Sheets["工作表3"];
+        const data3 = XLSX.utils.sheet_to_json(sheet3, { header: "A", raw: false, defval: "" });
+        // 💡 標記此資料來自工作表3，並儲存原始字串供編輯比對使用
+        data3.forEach(row => {
+            row._isSheet3 = true;
+            row._rawTime = String(row['B'] || '').trim();
+        });
+        combinedRawData = combinedRawData.concat(data3);
+      }
+
+      const cleanedData = [];
+
+      combinedRawData.forEach(row => {
+        let rawDate = String(row['A'] || '').trim(); 
+        let parsedDate = new Date(rawDate);
+        
+        if (isNaN(parsedDate.getTime()) || rawDate.length < 5) return;
+        let standardDate = `${parsedDate.getFullYear()}/${String(parsedDate.getMonth() + 1).padStart(2, '0')}/${String(parsedDate.getDate()).padStart(2, '0')}`;
+        
+        let rawTime = String(row['B'] || '').trim().replace(/上午|下午|早上|中午|晚上|半|點|分|\s+/g, '');
+        const match = rawTime.match(/(\d{1,2})[:：]?(\d{2})?[~\-到至]+(\d{1,2})[:：]?(\d{2})?/);
+        if (!match) return;
+        
+        let startNum = parseInt(match[1], 10) + (match[2] ? parseInt(match[2], 10)/60 : 0);
+        let endNum = parseInt(match[3], 10) + (match[4] ? parseInt(match[4], 10)/60 : 0);
+        
+        let matchedSpaceIds = extractSpaceIds(String(row['D'] || ''));
+        
+        if (matchedSpaceIds.length > 0) {
+          cleanedData.push({ 
+             date: standardDate, 
+             ids: matchedSpaceIds, 
+             start: startNum, 
+             end: endNum, 
+             activityName: String(row['C'] || '未命名活動').trim(), 
+             remarks: String(row['E'] || '').trim(), 
+             rawLocation: String(row['D'] || '').trim(),
+             _isSheet3: row._isSheet3 || false,
+             _rawTime: row._rawTime || ''
+          });
+        }
+      });
+      
+      allSheetData = cleanedData;
+      
+      calculateConflicts();
+      if (!document.getElementById('calendarView').classList.contains('hidden')) {
+        if (calViewMode === "grid") renderCalendarItems(); else renderMonthListItems();
+      }
+      
+    } catch (err) {
+      console.error("資料解析錯誤: ", err);
+      showToast("⚠️ 資料解析異常，請檢查檔案格式");
+    }
+  }
+
+  function calculateConflicts() {
+    // 重置所有區塊為空閒狀態
+    mobileMatrixConfig.forEach(f => f.spaces.forEach(s => {
+      const box = document.getElementById(`grid-${s.id}`);
+      if (box) { box.className = "space-box status-free"; box.querySelector('.space-status-txt').style.display = "none"; }
+    }));
+    if (currentDayActivities.length === 0) return;
+
+    let pivotTime = -1;
+    if (currentSelectedIndex >= 0 && currentDayActivities[currentSelectedIndex]) {
+      pivotTime = currentDayActivities[currentSelectedIndex].start; 
+    } else { 
+      const now = new Date(); pivotTime = now.getHours() + (now.getMinutes() / 60); 
+    }
+
+    const spaceUsageMap = {};    // 紀錄目前選擇時間點的預約
+    const daySpaceUsageMap = {}; // 💡 紀錄當日所有的預約
+
+    currentDayActivities.forEach(act => {
+      // 收集當日所有預約
+      act.ids.forEach(id => { 
+        if (!daySpaceUsageMap[id]) daySpaceUsageMap[id] = []; 
+        daySpaceUsageMap[id].push(act); 
+      });
+      
+      // 收集特定時間點的預約
+      if (pivotTime >= act.start && pivotTime < act.end) {
+        act.ids.forEach(id => { 
+          if (!spaceUsageMap[id]) spaceUsageMap[id] = []; 
+          spaceUsageMap[id].push(act); 
+        });
+      }
+    });
+
+    // 💡 第一層：將「當日有預約，但當前時間空閒」的區塊標示出來 (50% 紅色)
+    Object.keys(daySpaceUsageMap).forEach(id => {
+      if (!spaceUsageMap[id]) { // 代表這個時間點沒事，但今天其他時間有事
+        const box = document.getElementById(`grid-${id}`); 
+        if (!box) return;
+        box.className = "space-box status-booked-other";
+        const statusTxt = box.querySelector('.space-status-txt');
+        statusTxt.style.display = "block"; 
+        statusTxt.textContent = "當日有約";
+      }
+    });
+
+    // 💡 第二層：覆蓋處理「當前時間點」確實有活動的區塊 (完整紅色 / 衝突閃爍)
+    Object.keys(spaceUsageMap).forEach(id => {
+      const box = document.getElementById(`grid-${id}`); if (!box) return;
+      const totalActs = spaceUsageMap[id];
+      if (totalActs.length > 1) {
+        box.className = "space-box status-conflict";
+        const statusTxt = box.querySelector('.space-status-txt');
+        statusTxt.style.display = "block"; statusTxt.textContent = `💥 衝突(${totalActs.length})`;
+        totalActs.forEach(a => a._hasConflict = true);
+      } else {
+        box.className = "space-box status-booked";
+        const statusTxt = box.querySelector('.space-status-txt');
+        statusTxt.style.display = "block"; statusTxt.textContent = totalActs[0].activityName.substring(0,4);
+      }
+    });
+  }
+
+  function renderActivityList() {
+    const listContainer = document.getElementById('activityStreamItems');
+    listContainer.innerHTML = '';
+    currentDayActivities = allSheetData.filter(item => item.date === globalSelectedDateStr).sort((a, b) => a.start - b.start);
+    currentDayActivities.forEach(a => a._hasConflict = false);
+
+    if (currentDayActivities.length === 0) {
+      listContainer.innerHTML = `<div class="no-schedule-msg">暫無活動申請<br><small>(${globalSelectedDateStr})</small></div>`;
+      calculateConflicts(); return;
+    }
+
+    currentDayActivities.forEach((item, index) => {
+      const card = document.createElement('div');
+      card.className = 'mobile-card'; card.id = `activity-card-${index}`;
+      card.innerHTML = `
+        <div class="mobile-card-summary" onclick="handleCardClick(${index})">
+          <div class="card-time-col">
+            <div class="card-time-start">${formatTime(item.start)}</div>
+            <div class="card-time-end">${formatTime(item.end)}</div>
+          </div>
+          <div class="card-title-col"><div class="card-title-lbl">${item.activityName}</div></div>
+        </div>
+        <div class="mobile-card-details" id="details-${index}">
+          <div class="mobile-card-details-content">
+            <div class="card-details-grid">
+              <div class="details-column"><div class="details-label">申請人/單位</div><div class="details-val">${item.remarks ? item.remarks : '無'}</div></div>
+              <div class="details-column"><div class="details-label">使用地點</div><div class="details-val">${item.rawLocation || '無'}</div></div>
+            </div>
+          </div>
+        </div>`;
+      listContainer.appendChild(card);
+    });
+
+    let targetIdx = 0; const now = new Date();
+    const todayStr = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')}`;
+    if (globalSelectedDateStr === todayStr) {
+      const currentHour = now.getHours() + (now.getMinutes() / 60);
+      for (let i = 0; i < currentDayActivities.length; i++) {
+        if (currentHour >= currentDayActivities[i].start && currentHour < currentDayActivities[i].end) { targetIdx = i; break; } 
+        else if (currentDayActivities[i].start > currentHour) { targetIdx = i; break; }
+        targetIdx = currentDayActivities.length - 1; 
+      }
+    }
+    selectActivityCard(targetIdx, false);
+    const timelineContainer = document.querySelector('.timeline-container');
+    if (timelineContainer) timelineContainer.scrollTop = 0;
+  }
+
+  function handleCardClick(index) {
+    if (index === currentSelectedIndex) selectActivityCard(index, true); else selectActivityCard(index, false);
+  }
+
+  function selectActivityCard(index, toggleIfSame = false) {
+    const cards = document.querySelectorAll('.mobile-card');
+    if (index === currentSelectedIndex && toggleIfSame) expandedIndex = (expandedIndex === index) ? -1 : index;
+    else { currentSelectedIndex = index; expandedIndex = index; }
+    cards.forEach((c, i) => {
+      const details = document.getElementById(`details-${i}`);
+      if (i === currentSelectedIndex) c.classList.add('active-item'); else { c.classList.remove('active-item'); c.classList.remove('has-conflict-card'); }
+      if (details) details.style.maxHeight = (i === expandedIndex) ? (details.scrollHeight + "px") : "0px";
+    });
+    calculateConflicts();
+    if (currentDayActivities[currentSelectedIndex]) {
+      const item = currentDayActivities[currentSelectedIndex];
+      if (item._hasConflict) cards[currentSelectedIndex]?.classList.add('has-conflict-card');
+    }
+  }
+
+  function openCalendarView() {
+    document.getElementById('mainView').classList.add('hidden'); document.getElementById('calendarView').classList.remove('hidden');
     const parts = globalSelectedDateStr.split('/');
     calendarViewDate = new Date(parseInt(parts[0],10), parseInt(parts[1],10)-1, 1);
-    
     if (calViewMode === "grid") {
-      renderCalendarItems();
-      document.getElementById('calGridItems').classList.remove('hidden');
-      document.getElementById('calMonthListItems').classList.add('hidden');
-      document.getElementById('btnToggleCalMode').textContent = "當月活動列表";
+      renderCalendarItems(); document.getElementById('calGridItems').classList.remove('hidden'); document.getElementById('calMonthListItems').classList.add('hidden'); document.getElementById('btnToggleCalMode').textContent = "當月活動列表";
     } else {
-      renderMonthListItems();
-      document.getElementById('calGridItems').classList.add('hidden');
-      document.getElementById('calMonthListItems').classList.remove('hidden');
-      document.getElementById('btnToggleCalMode').textContent = "活動月曆";
+      renderMonthListItems(); document.getElementById('calGridItems').classList.add('hidden'); document.getElementById('calMonthListItems').classList.remove('hidden'); document.getElementById('btnToggleCalMode').textContent = "活動月曆";
     }
   }
 
-  function closeCalendarView() {
-    document.getElementById('calendarView').classList.add('hidden');
-    document.getElementById('mainView').classList.remove('hidden');
-  }
+  function closeCalendarView() { document.getElementById('calendarView').classList.add('hidden'); document.getElementById('mainView').classList.remove('hidden'); }
 
   function toggleCalViewMode() {
-    const grid = document.getElementById('calGridItems');
-    const list = document.getElementById('calMonthListItems');
-    const toggleBtn = document.getElementById('btnToggleCalMode');
-    
-    if (calViewMode === "grid") {
-      calViewMode = "list";
-      grid.classList.add('hidden');
-      list.classList.remove('hidden');
-      toggleBtn.textContent = "活動月曆";
-      renderMonthListItems();
-    } else {
-      calViewMode = "grid";
-      list.classList.add('hidden');
-      grid.classList.remove('hidden');
-      toggleBtn.textContent = "當月活動列表";
-      renderCalendarItems();
-    }
+    const grid = document.getElementById('calGridItems'); const list = document.getElementById('calMonthListItems'); const toggleBtn = document.getElementById('btnToggleCalMode');
+    if (calViewMode === "grid") { calViewMode = "list"; grid.classList.add('hidden'); list.classList.remove('hidden'); toggleBtn.textContent = "活動月曆"; renderMonthListItems(); } 
+    else { calViewMode = "grid"; list.classList.add('hidden'); grid.classList.remove('hidden'); toggleBtn.textContent = "當月活動列表"; renderCalendarItems(); }
   }
 
-  function changeCalendarMonth(offset) {
-    calendarViewDate.setMonth(calendarViewDate.getMonth() + offset);
-    if (calViewMode === "grid") {
-      renderCalendarItems();
-    } else {
-      renderMonthListItems();
-    }
-  }
-
-  // 西元年跳轉
-  function toggleYearDropdown(e) {
-    e.stopPropagation();
-    const dropdown = document.getElementById('yearDropdownMenu');
-    dropdown.classList.toggle('hidden');
-  }
-
-  function selectYear(year) {
-    calendarViewDate.setFullYear(year);
-    document.getElementById('yearDropdownMenu').classList.add('hidden');
-    if (calViewMode === "grid") {
-      renderCalendarItems();
-    } else {
-      renderMonthListItems();
-    }
-  }
-
+  function changeCalendarMonth(offset) { calendarViewDate.setMonth(calendarViewDate.getMonth() + offset); if (calViewMode === "grid") renderCalendarItems(); else renderMonthListItems(); }
+  function toggleYearDropdown(e) { e.stopPropagation(); document.getElementById('yearDropdownMenu').classList.toggle('hidden'); }
+  function selectYear(year) { calendarViewDate.setFullYear(year); document.getElementById('yearDropdownMenu').classList.add('hidden'); if (calViewMode === "grid") renderCalendarItems(); else renderMonthListItems(); }
   function populateYearDropdown() {
-    const dropdown = document.getElementById('yearDropdownMenu');
-    const baseYear = new Date().getFullYear();
-    let html = '';
-    for (let y = baseYear - 15; y <= baseYear + 15; y++) {
-      html += `<div class="year-opt" onclick="selectYear(${y})">${y}</div>`;
-    }
+    const dropdown = document.getElementById('yearDropdownMenu'); const baseYear = new Date().getFullYear(); let html = '';
+    for (let y = baseYear - 15; y <= baseYear + 15; y++) html += `<div class="year-opt" onclick="selectYear(${y})">${y}</div>`;
     dropdown.innerHTML = html;
   }
 
-  // 繪製日期面板
   function renderCalendarItems() {
-    const grid = document.getElementById('calGridItems');
-    const y = calendarViewDate.getFullYear();
-    const m = calendarViewDate.getMonth();
-    
-    document.getElementById('calYearBtn').textContent = y;
-    document.getElementById('calMonthVal').textContent = m + 1;
-    
-    const dayNames = ['日', '一', '二', '三', '四', '五', '六'];
-    let html = dayNames.map(d => `<div class="cal-day-lbl">${d}</div>`).join('');
-    
-    const firstDay = new Date(y, m, 1).getDay();
-    const daysInMonth = new Date(y, m + 1, 0).getDate();
+    const grid = document.getElementById('calGridItems'); const y = calendarViewDate.getFullYear(); const m = calendarViewDate.getMonth();
+    document.getElementById('calYearBtn').textContent = y; document.getElementById('calMonthVal').textContent = m + 1;
+    const dayNames = ['日', '一', '二', '三', '四', '五', '六']; let html = dayNames.map(d => `<div class="cal-day-lbl">${d}</div>`).join('');
+    const firstDay = new Date(y, m, 1).getDay(); const daysInMonth = new Date(y, m + 1, 0).getDate();
     const activeDates = new Set(allSheetData.map(d => d.date));
-    
-    const today = new Date();
-    const todayStr = `${today.getFullYear()}/${String(today.getMonth() + 1).padStart(2, '0')}/${String(today.getDate()).padStart(2, '0')}`;
-
+    const today = new Date(); const todayStr = `${today.getFullYear()}/${String(today.getMonth() + 1).padStart(2, '0')}/${String(today.getDate()).padStart(2, '0')}`;
     for (let i = 0; i < firstDay; i++) html += `<div></div>`;
-    
     for (let i = 1; i <= daysInMonth; i++) {
-      const dStr = `${y}/${String(m + 1).padStart(2, '0')}/${String(i).padStart(2, '0')}`;
-      let cls = ['cal-cell'];
-      if (activeDates.has(dStr)) cls.push('cal-cell has-act');
-      if (dStr === todayStr) cls.push('is-today');
-      if (dStr === globalSelectedDateStr) cls.push('is-selected');
-      
+      const dStr = `${y}/${String(m + 1).padStart(2, '0')}/${String(i).padStart(2, '0')}`; let cls = ['cal-cell'];
+      if (activeDates.has(dStr)) cls.push('cal-cell has-act'); else if (dStr === todayStr) cls.push('is-today'); else cls.push('cell-gray');
+      if (dStr === globalSelectedDateStr) cls.push('cell-selected');
       html += `<div class="${cls.join(' ')}" onclick="selectCalendarDate('${dStr}')">${i}</div>`;
     }
     grid.innerHTML = html;
   }
 
-  // 繪製單行月清單
   function renderMonthListItems() {
-    const list = document.getElementById('calMonthListItems');
-    const y = calendarViewDate.getFullYear();
-    const m = calendarViewDate.getMonth();
-    
-    document.getElementById('calYearBtn').textContent = y;
-    document.getElementById('calMonthVal').textContent = m + 1;
-    
+    const list = document.getElementById('calMonthListItems'); const y = calendarViewDate.getFullYear(); const m = calendarViewDate.getMonth();
+    document.getElementById('calYearBtn').textContent = y; document.getElementById('calMonthVal').textContent = m + 1;
     const targetPrefix = `${y}/${String(m + 1).padStart(2, '0')}/`;
-    const monthlyActivities = allSheetData.filter(item => item.date && item.date.startsWith(targetPrefix))
-                                           .sort((a, b) => {
-                                             const dayA = parseInt(a.date.split('/')[2], 10);
-                                             const dayB = parseInt(b.date.split('/')[2], 10);
-                                             if (dayA !== dayB) return dayA - dayB;
-                                             return a.start - b.start;
-                                           });
-                                           
-    if (monthlyActivities.length === 0) {
-      list.innerHTML = `<div class="no-schedule-msg" style="margin: auto;">暫無活動申請</div>`;
-      return;
-    }
-    
+    const monthlyActivities = allSheetData.filter(item => item.date && item.date.startsWith(targetPrefix)).sort((a, b) => {
+      const dayA = parseInt(a.date.split('/')[2], 10); const dayB = parseInt(b.date.split('/')[2], 10);
+      if (dayA !== dayB) return dayA - dayB; return a.start - b.start;
+    });
+    if (monthlyActivities.length === 0) { list.innerHTML = `<div class="no-schedule-msg" style="margin: auto;">暫無活動申請</div>`; return; }
     let html = '';
     monthlyActivities.forEach(item => {
-      const dayNum = parseInt(item.date.split('/')[2], 10);
-      const timeRange = `${formatTime(item.start)}-${formatTime(item.end)}`;
-      
-      html += `
-        <div class="cal-month-row" onclick="selectCalendarDate('${item.date}')">
-          <div class="cal-month-date">${String(dayNum).padStart(2, '0')}日</div>
-          <div class="cal-month-time">${timeRange}</div>
-          <div class="cal-month-name">${item.activityName}</div>
-        </div>
-      `;
+      const dayNum = parseInt(item.date.split('/')[2], 10); const timeRange = `${formatTime(item.start)}-${formatTime(item.end)}`;
+      html += `<div class="cal-month-row" onclick="selectCalendarDate('${item.date}')"><div class="cal-month-date">${String(dayNum).padStart(2, '0')}日</div><div class="cal-month-time">${timeRange}</div><div class="cal-month-name">${item.activityName}</div></div>`;
     });
     list.innerHTML = html;
   }
 
-  // 選擇日期後切換回主畫面
-  function selectCalendarDate(dateStr) {
-    globalSelectedDateStr = dateStr;
-    document.getElementById('dateTriggerBtnText').textContent = globalSelectedDateStr.substring(5);
-    closeCalendarView();
-    renderActivityList();
-  }
-
-  // 8. 全域導航膠囊切換日期
+  function selectCalendarDate(dateStr) { globalSelectedDateStr = dateStr; document.getElementById('dateTriggerBtnText').textContent = globalSelectedDateStr.substring(5); closeCalendarView(); renderActivityList(); }
   function changeDateOffset(offset) {
     let d = new Date();
     if (offset !== 0 && globalSelectedDateStr) {
       const parts = globalSelectedDateStr.split('/');
-      d = new Date(parseInt(parts[0],10), parseInt(parts[1],10)-1, parseInt(parts[2],10));
-      d.setDate(d.getDate() + offset);
+      d = new Date(parseInt(parts[0],10), parseInt(parts[1],10)-1, parseInt(parts[2],10)); d.setDate(d.getDate() + offset);
     }
-    const targetStr = `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
-    globalSelectedDateStr = targetStr;
+    globalSelectedDateStr = `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
     document.getElementById('dateTriggerBtnText').textContent = globalSelectedDateStr.substring(5);
-    
     renderActivityList();
   }
 
-  // 點擊外部自動收起年份下拉選單
   document.addEventListener('click', (e) => {
-    const dropdown = document.getElementById('yearDropdownMenu');
-    const yearBtn = document.getElementById('calYearBtn');
-    if (dropdown && !dropdown.classList.contains('hidden')) {
-      if (e.target !== yearBtn && !dropdown.contains(e.target)) {
-        dropdown.classList.add('hidden');
-      }
-    }
+    const dropdown = document.getElementById('yearDropdownMenu'); const yearBtn = document.getElementById('calYearBtn');
+    if (dropdown && !dropdown.classList.contains('hidden')) { if (e.target !== yearBtn && !dropdown.contains(e.target)) dropdown.classList.add('hidden'); }
   });
 
-  // 9. 初始化啟動
   window.addEventListener('DOMContentLoaded', async () => {
-    initMatrixDOM();
-    populateYearDropdown();
-    changeDateOffset(0); 
-    await fetchOnlineExcel(); // 將以破解快取的 URL 取得最新資料
-    renderActivityList();
-
-    setInterval(async () => {
-      await fetchOnlineExcel();
-      renderActivityList();
-    }, 10 * 60 * 1000);
+    initMatrixDOM(); populateYearDropdown(); initTimeOptions(); changeDateOffset(0); 
+    await fetchOnlineExcel(); renderActivityList();
+    setInterval(async () => { await fetchOnlineExcel(); renderActivityList(); }, 10 * 60 * 1000);
   });
 </script>
 </body>
