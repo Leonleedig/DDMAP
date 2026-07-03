@@ -3,8 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>分院活動空間一覽</title>
+<title>分院活動空間一覽 (行動通訊優化版)</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+<!-- 💡 載入 Material Symbols 圖標庫 -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
 <style>
   :root {
     --primary-color: #fafafa;
@@ -291,6 +293,35 @@
     display: flex; align-items: center; gap: 6px;
   }
 
+  /* 💡 新功能導覽膠囊按鈕樣式 */
+  .floating-new-feature-capsule {
+    position: fixed;
+    bottom: 80px; /* 放在原本的導航膠囊上方 */
+    right: 20px;
+    background: var(--accent-red); /* 使用醒目的紅色 */
+    color: #ffffff;
+    border-radius: 30px;
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);
+    z-index: 1000;
+    text-decoration: none; /* 去除超連結底線 */
+    font-weight: bold;
+    font-size: 14px;
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  .floating-new-feature-capsule:active {
+    transform: scale(0.95);
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+  }
+  /* 微調 Material Symbol 垂直對齊 */
+  .material-symbols-outlined {
+    font-size: 20px;
+    line-height: 1;
+  }
+
   /* =========================================
      [視圖 B] 網頁原生版面：活動月曆
      ========================================= */
@@ -414,6 +445,12 @@
     <div class="timeline-container">
       <div class="activity-stream" id="activityStreamItems"></div>
     </div>
+
+    <!-- 💡 新功能導覽膠囊按鈕 -->
+    <a href="calendar.html" class="floating-new-feature-capsule">
+      <span class="material-symbols-outlined">calendar_month</span>
+      新功能！月曆一覽
+    </a>
 
     <div class="floating-nav-capsule">
       <button class="btn-floating-arrow" onclick="changeDateOffset(-1)">◀</button>
