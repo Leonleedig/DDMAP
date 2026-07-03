@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Modern Monthly Calendar</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root { --app-width: 100vh; --app-height: 100vw; }
+        body { 
+            background-color: #020617; 
+            font-family: 'Inter', sans-serif; 
+            color: #f8fafc; 
+            overflow: hidden; 
+            margin: 0; 
+            padding: 0; 
+            /* 禁用文字選取，防止滑動時反白 */
+            -webkit-user-select: none; /* Safari */
+            -ms-user-select: none; /* IE 10 and IE 11 */
+            user-select: none; /* Standard syntax */
+        }
+        
+        .landscape-wrapper {
+            position: fixed; top: 0; left: 0;
+            width: var(--app-width); height: var(--app-height);
+            transform-origin: top left;
+            transform: rotate(90deg) translateY(-100%);
+            display: flex; flex-direction: column; padding: 1rem;
+        }
+        
+        ::-webkit-scrollbar { display: none; }
+
+        .event-item {
+            flex: 1; display: flex; align-items: center; padding: 0 4px;
+            min-height: 0; white-space: nowrap; overflow: hidden;
+            text-overflow: ellipsis; margin-bottom: 1px; border: 1px solid black;
+            cursor: pointer;
+        }
+
+        #event-panel {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 100; backdrop-filter: blur(12px);
+        }
+        
+        /* 允許用戶在面板內複製文字 */
+        #panel-desc, #panel-title {
+            -webkit-user-select: text;
+            -ms-user-select: text;
+            user-select: text;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="landscape-wrapper" id="app">
+        <header class="flex justify-between items-center mb-2 px-2 select-none">
+            <div class="flex items-center gap-2">
+                <a href="index.html" class="flex items-center gap-1 p-2 text-slate-400 hover:text-indigo-400 transition-colors bg-slate-800/50 hover:bg-slate-800 rounded-lg">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
+                    </svg>
+                    <span class="text-sm font-bold">回主畫面</span>
+                </a>
+                <button onclick="changeMonth(-1)" class="p-2 text-slate-400 hover:text-indigo-400 transition-colors">◀ 上月</button>
+            </div>
+            
+            <div class="relative">
+                <button onclick="toggleYearMenu()" class="text-xl font-bold text-indigo-400">
+                    <span id="year-display"></span>年 <span id="month-display"></span>月
+                </button>
+                <div id="year-menu" class="hidden absolute top-full left-0 mt-2 bg-slate-800 rounded-lg shadow-xl border border-slate-700 z-50 w-24">
+                    <button onclick="setYear(currentDate.getFullYear()-1)" class="w-full text-left px-4 py-2 hover:bg-slate-700 text-sm">上一年</button>
+                    <button onclick="setYear(currentDate.getFullYear()+1)" class="w-full text-left px-4 py-2 hover:bg-slate-700 text-sm">下一年</button>
+                </div>
+            </div>
+            <button onclick="changeMonth(1)" class="p-2 text-slate-400 hover:text-indigo-400 transition-colors">下月 ▶</button>
+        </header>
+
+        <div id="calendar-grid" class="flex-grow grid grid-cols-7 gap-px bg-slate-800 border border-slate-800 rounded-xl overflow-hidden h-[calc(100vh-80px)]">
+        </div>
+
+        <div id="event-panel" class="hidden bg-slate-900/90 border-t border-rose-500/30 p-6 flex flex-col justify-center items-center">
+            <div class="max-w-md w-full bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-2xl">
+                <h2 id="panel-title" class="text-2xl font-bold text-rose-500 mb-2"></h2>
+                <p id="panel-time" class="text-sm text-slate-400 mb-4 font-mono"></p>
+                <div id="panel-desc" class="text-slate-300 text-sm mb-6 leading-relaxed bg-slate-950 p-4 rounded-lg h-32 overflow-y-auto"></div>
+                <button onclick="closePanel()" class="w-full py-3 bg-rose-600 hover:bg-rose-500 rounded-xl font-bold text-white transition-colors">關閉</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const CALENDAR_ID = '7374ac98b8a9b01d5e6393339666da2a37a3fcf35cfd2389b1a8072f32d545cf@group.calendar.google.com';
+        const API_KEY = 'AIzaSyBxikRUbWCU_2zJS7glqoadyHIiUDgUPsA'; 
+        
+        let currentDate = new Date();
+        let allEvents = []; 
+        let isDragging = false, startX = 0;
+
+        function toggleYearMenu() { document.getElementById('year-menu').classList.toggle('hidden'); }
+        function setYear(y) { currentDate.setFullYear(y); toggleYearMenu(); fetchEvents(); }
+        function changeMonth(offset) { currentDate.setMonth(currentDate.getMonth() + offset); fetchEvents(); }
+
+        async function fetchEvents() {
+            const firstDay = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).toISOString();
+            const lastDay = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).toISOString();
+            const API_URL = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(CALENDAR_ID)}/events?key=${API_KEY}&orderBy=startTime&singleEvents=true&timeMin=${firstDay}&timeMax=${lastDay}`;
+
+            try {
+                const response = await fetch(API_URL);
+                const data = await response.json();
+                allEvents = data.items || [];
+                renderCalendar(allEvents, currentDate.getFullYear(), currentDate.getMonth());
+            } catch (error) { console.error("Fetch failed", error); }
+        }
+
+        function renderCalendar(events, year, month) {
+            document.getElementById('year-display').innerText = year;
+            document.getElementById('month-display').innerText = month + 1;
+            
+            const firstDayIndex = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const grid = document.getElementById('calendar-grid');
+
+            grid.innerHTML = '';
+            grid.style.gridTemplateRows = "auto repeat(5, 1fr)";
+
+            ['日','一','二','三','四','五','六'].forEach((day, idx) => {
+                const h = document.createElement('div');
+                h.className = `flex items-center justify-center text-[10px] h-6 font-bold ${idx === 0 ? 'text-red-400 bg-red-950/20' : idx === 6 ? 'text-emerald-400 bg-emerald-950/20' : 'text-slate-500'}`;
+                h.innerText = day;
+                grid.appendChild(h);
+            });
+
+            for (let i = 0; i < firstDayIndex; i++) grid.appendChild(document.createElement('div')).className = 'bg-slate-950/30';
+
+            for (let d = 1; d <= daysInMonth; d++) {
+                const dayOfWeek = (firstDayIndex + d - 1) % 7;
+                const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                const dayEvents = events.filter(e => (e.start.dateTime || e.start.date).startsWith(dateStr));
+                const count = dayEvents.length;
+
+                let sizeClass = count === 1 ? 'text-lg' : count < 3 ? 'text-sm' : 'text-xs';
+                const cell = document.createElement('div');
+                cell.className = `${dayOfWeek === 0 ? 'bg-red-950/10' : dayOfWeek === 6 ? 'bg-emerald-950/10' : 'bg-slate-900'} border-t border-r border-slate-800/50 p-0.5 flex flex-col h-full`;
+                cell.innerHTML = `
+                    <div class="text-[10px] text-center w-full ${dayOfWeek === 0 ? 'text-red-400' : dayOfWeek === 6 ? 'text-emerald-400' : 'text-slate-600'} mb-0.5 font-mono">${d}</div>
+                    <div class="flex-1 flex flex-col overflow-hidden">
+                        ${dayEvents.map(e => {
+                            const title = e.summary.length > 5 ? e.summary.substring(0, 5) + '...' : e.summary;
+                            return `<div class="event-item ${sizeClass} bg-rose-500/80 text-white rounded" onclick="showPanel('${e.id}')">${title}</div>`;
+                        }).join('')}
+                    </div>
+                `;
+                grid.appendChild(cell);
+            }
+        }
+
+        function showPanel(eventId) {
+            const event = allEvents.find(e => e.id === eventId);
+            if (!event) return;
+            
+            let timeString = "";
+            const pad = n => String(n).padStart(2, '0');
+            
+            // 判斷是否有具體時間 (dateTime) 或只是全天行程 (date)
+            if (event.start.dateTime) {
+                const s = new Date(event.start.dateTime);
+                const e = new Date(event.end.dateTime);
+                timeString = `${s.getFullYear()}/${pad(s.getMonth()+1)}/${pad(s.getDate())} ${pad(s.getHours())}:${pad(s.getMinutes())}~${pad(e.getHours())}:${pad(e.getMinutes())}`;
+            } else if (event.start.date) {
+                const s = new Date(event.start.date);
+                timeString = `${s.getFullYear()}/${pad(s.getMonth()+1)}/${pad(s.getDate())} 全天`;
+            }
+
+            document.getElementById('panel-title').innerText = event.summary;
+            document.getElementById('panel-time').innerText = timeString;
+            document.getElementById('panel-desc').innerText = event.description || "無詳細說明";
+            document.getElementById('event-panel').classList.remove('hidden');
+        }
+
+        function closePanel() { document.getElementById('event-panel').classList.add('hidden'); }
+
+        const app = document.getElementById('app');
+        
+        // 統一滑動/拖曳邏輯
+        const handleStart = (x) => { isDragging = true; startX = x; };
+        const handleEnd = (x) => { 
+            if (!isDragging) return;
+            const diff = x - startX;
+            // 右滑(diff>0)往下個月, 左滑(diff<0)往上個月
+            if (Math.abs(diff) > 50) changeMonth(diff > 0 ? 1 : -1); 
+            isDragging = false;
+        };
+
+        app.addEventListener('touchstart', e => handleStart(e.touches[0].clientX));
+        app.addEventListener('touchend', e => handleEnd(e.changedTouches[0].clientX));
+        app.addEventListener('mousedown', e => handleStart(e.clientX));
+        app.addEventListener('mouseup', e => handleEnd(e.clientX));
+
+        window.onload = fetchEvents;
+    </script>
+</body>
+</html>
