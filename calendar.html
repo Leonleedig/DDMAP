@@ -6,7 +6,15 @@
     <title>Modern Monthly Calendar</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        :root { --app-width: 100vh; --app-height: 100vw; }
+        /* 
+           使用 dvh/dvw 確保在支援的瀏覽器中精確避開工具列 
+           並設定 fallback 變數供 JS 動態更新
+        */
+        :root { 
+            --app-width: 100vh; /* 預設值，之後由 JS 覆寫 */
+            --app-height: 100vw; 
+        }
+        
         body { 
             background-color: #020617; 
             font-family: 'Inter', sans-serif; 
@@ -14,18 +22,32 @@
             overflow: hidden; 
             margin: 0; 
             padding: 0; 
-            /* 禁用文字選取，防止滑動時反白 */
-            -webkit-user-select: none; /* Safari */
-            -ms-user-select: none; /* IE 10 and IE 11 */
-            user-select: none; /* Standard syntax */
+            -webkit-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+            
+            /* 防止 iOS Safari 在橫向模式下出現奇怪的縮放或滾動 */
+            position: fixed;
+            width: 100%;
+            height: 100%;
         }
         
         .landscape-wrapper {
-            position: fixed; top: 0; left: 0;
-            width: var(--app-width); height: var(--app-height);
+            position: absolute; top: 0; left: 0;
+            
+            /* 優先嘗試使用 dvh/dvw，若不支援則退回使用 var() */
+            width: var(--app-width);
+            width: 100dvh; 
+            
+            height: var(--app-height); 
+            height: 100dvw;
+            
             transform-origin: top left;
             transform: rotate(90deg) translateY(-100%);
             display: flex; flex-direction: column; padding: 1rem;
+            
+            /* 確保背景色覆蓋，避免出現白邊 */
+            background-color: #020617;
         }
         
         ::-webkit-scrollbar { display: none; }
@@ -42,7 +64,6 @@
             z-index: 100; backdrop-filter: blur(12px);
         }
         
-        /* 允許用戶在面板內複製文字 */
         #panel-desc, #panel-title {
             -webkit-user-select: text;
             -ms-user-select: text;
@@ -53,6 +74,7 @@
 <body>
 
     <div class="landscape-wrapper" id="app">
+        <!-- Header 區塊維持不變 -->
         <header class="flex justify-between items-center mb-2 px-2 select-none">
             <div class="flex items-center gap-2">
                 <a href="index.html" class="flex items-center gap-1 p-2 text-slate-400 hover:text-indigo-400 transition-colors bg-slate-800/50 hover:bg-slate-800 rounded-lg">
@@ -76,9 +98,11 @@
             <button onclick="changeMonth(1)" class="p-2 text-slate-400 hover:text-indigo-400 transition-colors">下月 ▶</button>
         </header>
 
-        <div id="calendar-grid" class="flex-grow grid grid-cols-7 gap-px bg-slate-800 border border-slate-800 rounded-xl overflow-hidden h-[calc(100vh-80px)]">
+        <!-- 將日曆高度設定為 flex-grow，讓它自動填滿剩餘空間 -->
+        <div id="calendar-grid" class="flex-grow grid grid-cols-7 gap-px bg-slate-800 border border-slate-800 rounded-xl overflow-hidden min-h-0">
         </div>
 
+        <!-- 面板區塊維持不變 -->
         <div id="event-panel" class="hidden bg-slate-900/90 border-t border-rose-500/30 p-6 flex flex-col justify-center items-center">
             <div class="max-w-md w-full bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-2xl">
                 <h2 id="panel-title" class="text-2xl font-bold text-rose-500 mb-2"></h2>
@@ -90,6 +114,7 @@
     </div>
 
     <script>
+        // STREAMING_CHUNK:Configuring API and Initial State...
         const CALENDAR_ID = '7374ac98b8a9b01d5e6393339666da2a37a3fcf35cfd2389b1a8072f32d545cf@group.calendar.google.com';
         const API_KEY = 'AIzaSyBxikRUbWCU_2zJS7glqoadyHIiUDgUPsA'; 
         
@@ -97,10 +122,33 @@
         let allEvents = []; 
         let isDragging = false, startX = 0;
 
+        // STREAMING_CHUNK:Implementing dynamic viewport calculation...
+        // === 動態計算視窗尺寸的核心邏輯 ===
+        function updateViewportSize() {
+            // 獲取當下真實的可視範圍
+            const vh = window.innerHeight;
+            const vw = window.innerWidth;
+            
+            // 寫入 CSS 變數。注意：因為我們旋轉了 90 度，所以 width 吃 vh，height 吃 vw
+            document.documentElement.style.setProperty('--app-width', `${vh}px`);
+            document.documentElement.style.setProperty('--app-height', `${vw}px`);
+        }
+
+        // 初始化與監聽尺寸變化 (例如：網址列縮放、裝置旋轉)
+        window.addEventListener('resize', updateViewportSize);
+        window.addEventListener('orientationchange', () => {
+            setTimeout(updateViewportSize, 100); // 延遲一下讓瀏覽器有時間重繪
+        });
+        
+        // 初始執行一次
+        updateViewportSize();
+        // ===================================
+
         function toggleYearMenu() { document.getElementById('year-menu').classList.toggle('hidden'); }
         function setYear(y) { currentDate.setFullYear(y); toggleYearMenu(); fetchEvents(); }
         function changeMonth(offset) { currentDate.setMonth(currentDate.getMonth() + offset); fetchEvents(); }
 
+        // STREAMING_CHUNK:Fetching events from API...
         async function fetchEvents() {
             const firstDay = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).toISOString();
             const lastDay = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).toISOString();
@@ -114,6 +162,7 @@
             } catch (error) { console.error("Fetch failed", error); }
         }
 
+        // STREAMING_CHUNK:Rendering calendar layout...
         function renderCalendar(events, year, month) {
             document.getElementById('year-display').innerText = year;
             document.getElementById('month-display').innerText = month + 1;
@@ -156,6 +205,7 @@
             }
         }
 
+        // STREAMING_CHUNK:Event Panel and Interaction logic...
         function showPanel(eventId) {
             const event = allEvents.find(e => e.id === eventId);
             if (!event) return;
@@ -163,7 +213,6 @@
             let timeString = "";
             const pad = n => String(n).padStart(2, '0');
             
-            // 判斷是否有具體時間 (dateTime) 或只是全天行程 (date)
             if (event.start.dateTime) {
                 const s = new Date(event.start.dateTime);
                 const e = new Date(event.end.dateTime);
@@ -183,12 +232,10 @@
 
         const app = document.getElementById('app');
         
-        // 統一滑動/拖曳邏輯
         const handleStart = (x) => { isDragging = true; startX = x; };
         const handleEnd = (x) => { 
             if (!isDragging) return;
             const diff = x - startX;
-            // 右滑(diff>0)往下個月, 左滑(diff<0)往上個月
             if (Math.abs(diff) > 50) changeMonth(diff > 0 ? 1 : -1); 
             isDragging = false;
         };
@@ -198,7 +245,9 @@
         app.addEventListener('mousedown', e => handleStart(e.clientX));
         app.addEventListener('mouseup', e => handleEnd(e.clientX));
 
-        window.onload = fetchEvents;
+        // 確保初始加載完成後再抓取事件
+        window.addEventListener('load', fetchEvents);
     </script>
 </body>
 </html>
+```eof
