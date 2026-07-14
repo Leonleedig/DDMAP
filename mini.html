@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>空間狀態 (真實資料連線整合版)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+    <style>
+        :root { 
+            --bg-dark: #09090b; 
+            --panel-bg: #18181b; 
+            --accent-red: #e11d48; 
+            --text-main: #ffffff; 
+        }
+        body { 
+            font-family: -apple-system, sans-serif; 
+            background: var(--bg-dark); 
+            color: var(--text-main); 
+            margin: 0; 
+            overflow: hidden; 
+            height: 100vh; 
+            user-select: none; 
+            -webkit-tap-highlight-color: transparent; 
+        }
+        ::-webkit-scrollbar { display: none; }
+        
+        /* 嚴格的 75/25 佈局 */
+        #display-zone { height: 75vh; width: 100vw; position: relative; overflow: hidden; }
+        #nav-zone { height: 25vh; width: 100vw; background: var(--panel-bg); border-top: 2px solid #27272a; position: relative; z-index: 10; display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: 0 -4px 20px rgba(0,0,0,0.5); }
+
+        /* 模式切換容器 */
+        #mode-container { display: flex; height: 100%; width: 100%; transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1); }
+        .view-panel { flex: 0 0 100vw; height: 100%; position: relative; overflow: hidden; }
+
+        /* 垂直翻頁動畫容器 */
+        .v-page { position: absolute; inset: 0; opacity: 0; pointer-events: none; transition: all 0.3s ease; transform: translateY(20px); padding: 24px; display: flex; flex-direction: column; }
+        .v-page.active { opacity: 1; pointer-events: auto; transform: translateY(0); z-index: 5; }
+
+        /* 空間方塊基底 (取代大量重複的 Tailwind 樣式) */
+        .space-box {
+            flex: 1 1 0%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            border-radius: 24px;
+            border-width: 2px;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+            padding: 4px 8px;
+        }
+        .space-box:active { transform: scale(0.98); }
+        .space-box.empty { background-color: #09090b; border-color: #3f3f46; }
+        .space-box.active-single { background-color: #4c0519; border-color: #f43f5e; color: #fecdd3; }
+        .space-box.active-multi { background-color: #4c0519; border-color: #f43f5e; color: #fecdd3; }
+
+        /* 行程與資訊卡片 */
+        .schedule-card {
+            background-color: #18181b;
+            border: 1px solid #27272a;
+            border-radius: 24px;
+            padding: 20px;
+            transition: transform 0.2s, background-color 0.2s;
+            cursor: pointer;
+        }
+        .schedule-card:active { transform: scale(0.96); }
+
+        /* 按鈕系統 */
+        .btn-base {
+            padding: 16px;
+            border-radius: 16px;
+            font-size: 20px;
+            font-weight: bold;
+            transition: transform 0.2s, background-color 0.2s;
+            text-align: center;
+        }
+        .btn-base:active { transform: scale(0.95); }
+        .btn-dark { background-color: #27272a; color: #ffffff; }
+        .btn-dark:active { background-color: #3f3f46; }
+        .btn-danger { background-color: rgba(225, 29, 72, 0.15); border: 1px solid rgba(225, 29, 72, 0.4); color: #f43f5e; }
+        .btn-danger:active { background-color: rgba(225, 29, 72, 0.3); }
+        .btn-primary { background-color: #e11d48; color: #ffffff; }
+        .btn-primary:active { background-color: #be123c; }
+        .btn-disabled { background-color: #27272a; color: #52525b; pointer-events: none; }
+
+        /* 轉鈕與提示字樣 */
+        .date-spinner { font-weight: 900; letter-spacing: 1px; color: var(--text-main); transition: transform 0.2s; white-space: nowrap; font-size: clamp(20px, 6vw, 36px); }
+        .date-spinner:active { transform: scale(0.95); }
+        .swipe-hint { position: absolute; top: 50%; transform: translateY(-50%); font-size: 24px; color: #52525b; opacity: 0.5; animation: pulse 2s infinite; pointer-events: none; }
+        .swipe-hint.left { left: 16px; }
+        .swipe-hint.right { right: 16px; }
+
+        @keyframes pulse { 0%, 100% { opacity: 0.3; transform: translateY(-50%) translateX(0); } 50% { opacity: 0.8; transform: translateY(-50%) translateX(5px); } }
+        
+        /* 彈出層共用樣式 */
+        .action-modal { position: fixed; inset: 0; background: rgba(9, 9, 11, 0.95); backdrop-filter: blur(10px); z-index: 60; display: flex; flex-direction: column; transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1); }
+        .action-modal.show { transform: translateY(0); }
+
+        /* 浮動樓層指示器 */
+        .floor-dot { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; font-size: 14px; color: #52525b; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .floor-dot.active { background: rgba(225, 29, 72, 0.2); color: #f43f5e; font-size: 18px; font-weight: 900; border-radius: 12px; height: 56px; }
+
+        /* 月曆網格 */
+        .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; text-align: center; }
+        .cal-cell { padding: 8px 0; font-size: 22px; font-weight: bold; border-radius: 12px; color: #a1a1aa; cursor: pointer; transition: all 0.2s; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 60px; }
+        .cal-cell.active-month { color: #fff; background: rgba(255,255,255,0.05); }
+        .cal-cell.active-month:active { background: var(--accent-red); transform: scale(0.95); }
+        .cal-cell.selected { background: var(--accent-red); box-shadow: 0 4px 12px rgba(225, 29, 72, 0.4); }
+        .cal-cell.selected span { color: #fff !important; }
+
+        /* 浮動提示框 */
+        #toast-box { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.9); background: rgba(24,24,27,0.95); border: 1px solid #3f3f46; color: #fff; padding: 16px 24px; border-radius: 16px; font-size: 18px; font-weight: bold; z-index: 9999; opacity: 0; pointer-events: none; transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,0.8); }
+        #toast-box.show { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+
+        /* 申請頁專用十位數/個位數選單樣式 */
+        .time-sel { appearance: none; background-color: rgba(255,255,255,0.1); border: 1px solid #3f3f46; color: white; text-align: center; border-radius: 8px; padding: 8px 12px; font-size: 32px; font-weight: bold; font-family: monospace; outline: none; }
+        .time-sel:focus { border-color: var(--accent-red); }
+    </style>
+</head>
+<body>
+
+    <div id="toast-box">資料同步中...</div>
+
+    <!-- ================= [上區塊] 內容展示區 ================= -->
+    <div id="display-zone">
+        <div id="mode-container">
+            <!-- 模式 0：區域使用 (便當圖) -->
+            <div id="mode-area" class="view-panel active relative">
+                
+                <div class="absolute right-3 top-1/2 -translate-y-1/2 flex flex-col gap-2 items-center z-20 pointer-events-none" id="floor-indicator">
+                    <div class="floor-dot active" data-idx="0">4樓</div>
+                    <div class="floor-dot" data-idx="1">●</div>
+                    <div class="floor-dot" data-idx="2">●</div>
+                    <div class="floor-dot" data-idx="3">●</div>
+                </div>
+
+                <!-- 4 樓 -->
+                <div class="v-page active">
+                    <div class="flex-1 flex flex-col gap-4 pr-14 w-full h-full">
+                        <div id="box-寮房" class="space-box empty text-4xl"></div>
+                        <div id="box-歡喜地" class="space-box empty text-4xl"></div>
+                    </div>
+                </div>
+                
+                <!-- 3 樓 -->
+                <div class="v-page">
+                    <div class="flex-1 flex flex-col gap-4 pr-14 w-full h-full">
+                        <div id="box-大殿" class="space-box empty text-5xl"></div>
+                    </div>
+                </div>
+
+                <!-- 2 樓 -->
+                <div class="v-page">
+                    <div class="flex-1 flex flex-col gap-4 pr-14 w-full h-full">
+                        <div id="box-法堂一" class="space-box empty text-4xl"></div>
+                        <div id="box-法堂二" class="space-box empty text-4xl"></div>
+                    </div>
+                </div>
+
+                <!-- 1 樓 -->
+                <div class="v-page">
+                    <div class="flex-1 flex flex-col gap-4 pr-14 w-full h-full">
+                        <div id="box-齋堂" class="space-box empty text-3xl"></div>
+                        <div id="box-大寮" class="space-box empty text-3xl"></div>
+                        <div id="box-輕食區" class="space-box empty text-3xl"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 模式 1：行程表 -->
+            <div id="mode-schedule" class="view-panel">
+                <div class="v-page active" style="padding-top: 16px;">
+                    <div class="flex-1 overflow-y-auto pb-10 flex flex-col gap-3" id="schedule-list" style="touch-action: pan-y;">
+                        <!-- 資料由 JavaScript 動態生成 -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- 模式 2：月曆 -->
+            <div id="mode-calendar" class="view-panel">
+                <div class="v-page active" style="padding-top: 16px;">
+                    <div class="flex justify-between items-center mb-4 px-2">
+                        <button class="text-xl font-bold text-zinc-400 p-2 active:scale-95 transition" onclick="changeCalViewMonth(-1)">◀ 上月</button>
+                        <h3 class="text-2xl font-black text-white" id="inline-cal-title">--</h3>
+                        <button class="text-xl font-bold text-zinc-400 p-2 active:scale-95 transition" onclick="changeCalViewMonth(1)">下月 ▶</button>
+                    </div>
+                    
+                    <div class="cal-grid mb-2 px-2">
+                        <div class="text-zinc-500 font-bold">日</div><div class="text-zinc-500 font-bold">一</div>
+                        <div class="text-zinc-500 font-bold">二</div><div class="text-zinc-500 font-bold">三</div>
+                        <div class="text-zinc-500 font-bold">四</div><div class="text-zinc-500 font-bold">五</div>
+                        <div class="text-zinc-500 font-bold">六</div>
+                    </div>
+                    <div id="inline-cal-days" class="cal-grid flex-1 overflow-y-auto content-start px-2 pb-10" style="touch-action: pan-y;">
+                         <!-- 日期由 JavaScript 動態生成 -->
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="swipe-hint left" style="animation-direction: reverse;">◀</div>
+        <div class="swipe-hint right">▶</div>
+    </div>
+
+    <!-- ================= [下區塊] 唯一全域時間轉鈕區 ================= -->
+    <div id="nav-zone">
+        <div class="swipe-hint left" style="animation-direction: reverse;">◀ 昨</div>
+        <div class="swipe-hint right">明 ▶</div>
+        
+        <div class="flex items-center justify-center gap-6 w-full h-full px-6 relative">
+            <div class="date-spinner" id="date-display" data-raw-date="">--/--/-- (--)</div>
+            <button onclick="returnToToday()" class="bg-zinc-800/80 text-zinc-300 px-6 py-3 rounded-full font-bold text-xl active:bg-zinc-700 active:scale-95 transition border border-zinc-700 shadow-md whitespace-nowrap">
+                回今日
+            </button>
+        </div>
+    </div>
+
+    <!-- ================= [彈出層] 區域專屬行程列表 ================= -->
+    <div id="space-schedule-modal" class="fixed inset-0 z-50 transform translateY-full transition-transform duration-400 ease-in-out pointer-events-none" style="display: flex; flex-direction: column;">
+        <div class="flex-1 bg-zinc-950/95 backdrop-blur-md pointer-events-auto p-6 flex flex-col justify-start pb-8" style="height: 75vh; border-bottom: 2px solid #27272a;">
+            
+            <!-- 動態注入的區域行程清單 -->
+            <div id="ss-list" class="flex-1 overflow-y-auto mb-6 flex flex-col gap-3 pt-4">
+                <!-- 資料由 JavaScript 動態生成 -->
+            </div>
+            
+            <!-- 按鈕區 -->
+            <div class="flex gap-4 shrink-0 mt-2">
+                <button class="flex-1 py-4 bg-zinc-800 rounded-2xl text-2xl font-bold text-white shadow-lg active:scale-95 transition" onclick="closeSpaceSchedule()">返回</button>
+                <button class="flex-[2] py-4 bg-rose-600 rounded-2xl text-2xl font-bold text-white shadow-lg active:scale-95 transition" onclick="openApplyModalFromSpaceSchedule()">新增申請</button>
+            </div>
+        </div>
+        <div class="pointer-events-none" style="height: 25vh;"></div>
+    </div>
+
+    <!-- ================= [彈出層] 全新整合申請/修改面板 ================= -->
+    <div id="apply-modal" class="action-modal">
+        <div class="flex-1 p-6 flex flex-col justify-start overflow-y-auto pt-16 pb-8">
+            <div class="bg-zinc-900 border border-zinc-800 rounded-3xl p-6 w-full mb-4 shadow-inner flex flex-col gap-8">
+                
+                <div class="flex flex-col items-center gap-4 w-full">
+                    <div class="text-2xl font-bold text-zinc-400">活動內容</div>
+                    <input type="text" id="apply-input-activity" oninput="checkApplyValid()" class="w-full bg-zinc-800 border-2 border-zinc-700 rounded-xl px-4 py-4 text-2xl text-white outline-none focus:border-rose-500 text-center shadow-inner" placeholder="輸入活動名稱">
+                </div>
+
+                <hr class="border-zinc-800">
+
+                <div class="text-center">
+                    <div class="text-6xl font-black text-white mb-2" id="apply-space-name">--</div>
+                    <div class="text-2xl font-bold text-rose-400" id="apply-detail-date" data-act-date="">--/--/--</div>
+                </div>
+
+                <hr class="border-zinc-800">
+
+                <div class="flex flex-col items-center gap-6 font-mono text-white">
+                    <div class="flex items-center gap-2">
+                        <span class="text-2xl text-zinc-500 mr-2">起</span>
+                        <div class="flex gap-1">
+                            <select id="ts-h1" class="time-sel" onchange="validateTime()"></select>
+                            <select id="ts-h2" class="time-sel" onchange="validateTime()"></select>
+                        </div>
+                        <span class="text-3xl">:</span>
+                        <div class="flex gap-1">
+                            <select id="ts-m1" class="time-sel" onchange="validateTime()"></select>
+                            <select id="ts-m2" class="time-sel" onchange="validateTime()"></select>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                        <span class="text-2xl text-zinc-500 mr-2">迄</span>
+                        <div class="flex gap-1">
+                            <select id="te-h1" class="time-sel" onchange="validateTime()"></select>
+                            <select id="te-h2" class="time-sel" onchange="validateTime()"></select>
+                        </div>
+                        <span class="text-3xl">:</span>
+                        <div class="flex gap-1">
+                            <select id="te-m1" class="time-sel" onchange="validateTime()"></select>
+                            <select id="te-m2" class="time-sel" onchange="validateTime()"></select>
+                        </div>
+                    </div>
+                </div>
+
+                <hr class="border-zinc-800">
+
+                <div class="flex flex-col items-center gap-4 w-full">
+                    <div class="text-2xl font-bold text-zinc-400">申請者/單位</div>
+                    <input type="text" id="apply-input-applicant" oninput="checkApplyValid()" class="w-full bg-zinc-800 border-2 border-zinc-700 rounded-xl px-4 py-4 text-2xl text-white outline-none focus:border-rose-500 text-center shadow-inner" placeholder="輸入名稱">
+                </div>
+
+            </div>
+            
+            <div class="flex gap-4 mt-2 shrink-0">
+                <button class="flex-1 py-4 bg-zinc-800 rounded-2xl text-2xl font-bold text-white shadow-lg active:scale-95 transition" onclick="closeApplyModal()">取消</button>
+                <button id="btn-submit-apply" class="btn-base btn-disabled flex-[2] text-2xl shadow-lg" onclick="submitApply()">送出申請</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= [彈出層] 單一活動屬性頁 ================= -->
+    <div id="activity-modal" class="action-modal">
+        <div class="flex-1 p-8 flex flex-col justify-start overflow-y-auto pt-16 pb-8">
+            <div class="bg-zinc-900 border border-zinc-800 rounded-3xl p-8 w-full mb-4 shadow-inner">
+                <div class="text-4xl font-black text-white mb-8 leading-snug" id="act-detail-name">--</div>
+                <div class="text-3xl font-bold text-rose-400 mb-8 font-mono" id="act-detail-time">--</div>
+                <div class="text-3xl font-bold text-white mb-8" id="act-detail-loc">--</div>
+                <div class="text-2xl font-bold text-zinc-400" id="act-detail-remark">--</div>
+            </div>
+            
+            <div class="flex gap-4 mt-2 shrink-0" id="act-action-buttons">
+                <!-- 注入區 -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- 雲端資料設定 ---
+        const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzmd2V9jDz1VclpCLAkl4MnsBIbzzM5nv-VGc-GBF0mbPw5pdZ-109gKaKW3eNEv1mz/exec";
+        const SHEET_ID = "1Qejre9LK6vA-mt9y4nvn8A6C2pcqhHHd5Dt4my80jkw";
+        let allActivities = []; 
+
+        // --- 全域狀態 ---
+        let globalDate = new Date();
+        const modes = ['mode-area', 'mode-schedule', 'mode-calendar'];
+        let currentModeIdx = 0;
+        let calViewRenderDate = new Date();
+        let pageIndexes = { 'mode-area': 0, 'mode-schedule': 0, 'mode-calendar': 0 };
+        let toastTimer = null;
+        
+        let currentSelectedSpace = ''; 
+        let isSpaceScheduleModalOpen = false; 
+        let currentFormMode = 'add'; 
+        let currentEditData = {}; 
+
+        // 初始化時間單一數字下拉選單
+        function initSplitTimePickers() {
+            let opts0to9 = '';
+            for(let i=0; i<=9; i++) opts0to9 += `<option value="${i}">${i}</option>`;
+            
+            ['ts-h1', 'te-h1'].forEach(id => document.getElementById(id).innerHTML = `<option value="0">0</option><option value="1">1</option><option value="2">2</option>`);
+            ['ts-h2', 'te-h2'].forEach(id => document.getElementById(id).innerHTML = opts0to9);
+            ['ts-m1', 'te-m1'].forEach(id => document.getElementById(id).innerHTML = `<option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option>`);
+            ['ts-m2', 'te-m2'].forEach(id => document.getElementById(id).innerHTML = opts0to9);
+        }
+
+        function validateTime() {
+            let ids = ['ts', 'te'];
+            ids.forEach(prefix => {
+                let h1 = document.getElementById(`${prefix}-h1`).value;
+                let h2 = document.getElementById(`${prefix}-h2`).value;
+                if (h1 === '2' && parseInt(h2) > 3) {
+                    document.getElementById(`${prefix}-h2`).value = '3'; 
+                }
+            });
+            checkApplyValid();
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast-box');
+            toast.textContent = msg;
+            toast.classList.add('show');
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => toast.classList.remove('show'), 2500);
+        }
+
+        async function fetchOnlineData() {
+            const exportUrl = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=xlsx&t=${Date.now()}`;
+            const proxies = [ exportUrl, `https://corsproxy.io/?${encodeURIComponent(exportUrl)}` ];
+            
+            let buffer = null;
+            for (let url of proxies) {
+                try {
+                    let res = await fetch(url);
+                    if (res.ok) { buffer = await res.arrayBuffer(); break; }
+                } catch(e) {}
+            }
+
+            if (!buffer) { showToast("⚠️ 網路異常，無法取得最新資料"); return; }
+
+            try {
+                const wb = XLSX.read(buffer, { type: 'array' });
+                let rawData = [];
+                
+                if (wb.SheetNames[0]) {
+                    let s1 = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: "A", raw: false, defval: "" });
+                    rawData = rawData.concat(s1);
+                }
+                if (wb.SheetNames.includes("工作表3")) {
+                    let s3 = XLSX.utils.sheet_to_json(wb.Sheets["工作表3"], { header: "A", raw: false, defval: "" });
+                    s3.forEach(r => r._isSheet3 = true);
+                    rawData = rawData.concat(s3);
+                }
+
+                allActivities = rawData.map(r => {
+                    let rawDate = String(r['A'] || '').trim();
+                    let rawTitle = String(r['C'] || '').trim();
+                    if (rawDate.includes('日') || rawDate.includes('Date') || !rawDate) return null;
+
+                    let pd = new Date(rawDate);
+                    if(isNaN(pd.getTime())) {
+                        if (!isNaN(Number(rawDate))) { pd = new Date(Date.UTC(1899, 11, 30) + Number(rawDate) * 86400000); } 
+                        else { 
+                            pd = new Date(rawDate.replace(/-/g, '/'));
+                            if (isNaN(pd.getTime())) return null;
+                        }
+                    }
+
+                    let y = pd.getFullYear();
+                    if (y < 100) y += 2000;
+                    
+                    return {
+                        dateStr: `${y}/${String(pd.getMonth()+1).padStart(2,'0')}/${String(pd.getDate()).padStart(2,'0')}`,
+                        rawTime: String(r['B'] || '').trim(),
+                        title: rawTitle || '未命名活動',
+                        loc: String(r['D'] || '').trim(),
+                        remarks: String(r['E'] || '無').trim(),
+                        _raw: r
+                    };
+                }).filter(x => x);
+
+                showToast("✅ 資料同步完成");
+                syncDateUI();
+            } catch (err) {
+                showToast("⚠️ 解析資料失敗");
+                console.error(err);
+            }
+        }
+
+        function updateDate(deltaDays) { 
+            globalDate.setDate(globalDate.getDate() + deltaDays); 
+            syncDateUI(); 
+            if (isSpaceScheduleModalOpen && currentSelectedSpace) {
+                renderSpaceScheduleList(currentSelectedSpace);
+            }
+        }
+
+        function setSpecificDate(year, month, date) {
+            globalDate = new Date(year, month, date);
+            syncDateUI();
+            if (currentModeIdx === 2) switchMode(1);
+        }
+
+        function returnToToday() {
+            globalDate = new Date();
+            syncDateUI();
+            calViewRenderDate = new Date(globalDate.getTime());
+            renderInlineCalendar();
+            
+            if (isSpaceScheduleModalOpen && currentSelectedSpace) {
+                renderSpaceScheduleList(currentSelectedSpace);
+            }
+        }
+
+        function syncDateUI() {
+            const y = globalDate.getFullYear();
+            const m = String(globalDate.getMonth() + 1).padStart(2, '0');
+            const d = String(globalDate.getDate()).padStart(2, '0');
+            const dateStr = `${y}/${m}/${d}`;
+            
+            const weekdays = ['日', '一', '二', '三', '四', '五', '六'];
+            const wStr = weekdays[globalDate.getDay()];
+            
+            const dateDisplay = document.getElementById('date-display');
+            dateDisplay.textContent = `${dateStr} (${wStr})`;
+            dateDisplay.setAttribute('data-raw-date', dateStr);
+
+            renderScheduleForDate(dateStr);
+            renderAreaForDate(dateStr);
+            renderInlineCalendar();
+        }
+
+        // --- 動態渲染：行程表 ---
+        function renderScheduleForDate(targetDateStr) {
+            const listContainer = document.getElementById('schedule-list');
+            const daysActs = allActivities.filter(a => a.dateStr === targetDateStr);
+            
+            if (daysActs.length === 0) {
+                listContainer.innerHTML = `
+                    <div class="flex-1 flex flex-col items-center justify-center h-64 opacity-50 mt-10">
+                        <div class="text-6xl mb-4">☕</div>
+                        <div class="text-zinc-400 text-3xl font-bold">本日無活動</div>
+                    </div>`;
+                return;
+            }
+
+            let html = '';
+            daysActs.forEach((act) => {
+                const actIdx = allActivities.indexOf(act);
+                html += `
+                    <div class="schedule-card" onclick="openActivityByIdx(${actIdx})">
+                        <div class="flex justify-between items-end mb-2">
+                            <div class="text-rose-400 font-mono text-2xl font-bold">${act.rawTime || '全天'}</div>
+                            <div class="text-zinc-500 text-xl font-bold truncate max-w-[50%] text-right">${act.loc || '未指定'}</div>
+                        </div>
+                        <div class="text-4xl font-black text-white leading-tight">${act.title}</div>
+                    </div>`;
+            });
+            listContainer.innerHTML = html;
+        }
+
+        function getSpaceActivities(spaceName, daysActs) {
+            return daysActs.filter(act => {
+                let loc = act.loc.toLowerCase();
+                if (loc.includes("全區") || loc.includes("全棟")) return true;
+                if (spaceName === '法堂一' && (loc.includes('法堂一') || loc.includes('法堂1') || loc.includes('法堂'))) return true;
+                if (spaceName === '法堂二' && (loc.includes('法堂二') || loc.includes('法堂2') || loc.includes('法堂'))) return true;
+                if (spaceName === '寮房' && (loc.includes('寮房') || loc.includes('住宿'))) return true;
+                return loc.includes(spaceName);
+            });
+        }
+
+        function renderAreaForDate(targetDateStr) {
+            const daysActs = allActivities.filter(a => a.dateStr === targetDateStr);
+            const spaces = ['寮房', '歡喜地', '大殿', '法堂一', '法堂二', '齋堂', '大寮', '輕食區'];
+            
+            spaces.forEach(space => {
+                const el = document.getElementById(`box-${space}`);
+                if(!el) return;
+                
+                const spaceActs = getSpaceActivities(space, daysActs);
+                let spaceTextClass = (space === '大殿') ? "text-4xl" : (space === '齋堂' || space === '大寮' || space === '輕食區') ? "text-2xl" : "text-3xl";
+                
+                if (spaceActs.length === 0) {
+                    el.className = "space-box empty";
+                    el.innerHTML = `<div class="${spaceTextClass} text-white">${space}</div> <div class="text-zinc-500 text-base mt-1">空閒</div>`;
+                } else if (spaceActs.length === 1) {
+                    el.className = "space-box active-single";
+                    let shortTitle = spaceActs[0].title.length > 6 ? spaceActs[0].title.substring(0, 6) + '..' : spaceActs[0].title;
+                    el.innerHTML = `<div class="${spaceTextClass} mb-1">${space}</div> <div class="text-rose-400 text-base leading-tight line-clamp-1 break-all text-center w-full">${shortTitle}</div>`;
+                } else {
+                    el.className = "space-box active-multi";
+                    let actsHtml = '';
+                    if (spaceActs.length <= 3) {
+                        spaceActs.forEach(act => {
+                            actsHtml += `<div class="text-rose-300 text-[14px] leading-tight line-clamp-1 break-all text-center w-full font-medium">${act.title}</div>`;
+                        });
+                    } else {
+                        for(let i=0; i<2; i++){
+                            actsHtml += `<div class="text-rose-300 text-[14px] leading-tight line-clamp-1 break-all text-center w-full font-medium">${spaceActs[i].title}</div>`;
+                        }
+                        actsHtml += `<div class="text-rose-200 text-xs mt-1 bg-rose-900/80 px-2 py-1 rounded-md font-medium whitespace-nowrap">以及 ${spaceActs.length - 2} 項行程...</div>`;
+                    }
+                    el.innerHTML = `<div class="${spaceTextClass} mb-1">${space}</div> <div class="flex flex-col items-center w-full gap-[2px]">${actsHtml}</div>`;
+                }
+                
+                el.onclick = () => openSpaceSchedule(space);
+            });
+
+            let currentPIdx = pageIndexes['mode-area'] || 0;
+            updateFloorIndicator(currentPIdx, daysActs);
+        }
+
+        // --- 區域專屬行程列表 ---
+        function renderSpaceScheduleList(spaceName) {
+            const dateStr = document.getElementById('date-display').getAttribute('data-raw-date');
+            const daysActs = allActivities.filter(a => a.dateStr === dateStr);
+            const spaceActs = getSpaceActivities(spaceName, daysActs);
+            const listContainer = document.getElementById('ss-list');
+            
+            if (spaceActs.length === 0) {
+                listContainer.innerHTML = `
+                    <div class="flex-1 flex flex-col items-center justify-center opacity-50">
+                        <div class="text-5xl mb-4">☕</div>
+                        <div class="text-zinc-400 text-2xl font-bold">${spaceName} 此日無活動</div>
+                    </div>`;
+            } else {
+                let html = '';
+                spaceActs.forEach(act => {
+                    const actIdx = allActivities.indexOf(act);
+                    html += `
+                        <div class="schedule-card shrink-0 text-left" onclick="openActivityByIdx(${actIdx})">
+                            <div class="flex justify-between items-end mb-2">
+                                <div class="text-rose-400 font-mono text-xl font-bold">${act.rawTime || '全天'}</div>
+                                <div class="text-zinc-500 text-lg font-bold truncate max-w-[50%] text-right">${act.loc || '未指定'}</div>
+                            </div>
+                            <div class="text-3xl font-black text-white leading-tight break-all">${act.title}</div>
+                        </div>`;
+                });
+                listContainer.innerHTML = html;
+            }
+        }
+
+        function openSpaceSchedule(spaceName) {
+            currentSelectedSpace = spaceName;
+            isSpaceScheduleModalOpen = true;
+            renderSpaceScheduleList(spaceName);
+            
+            const modal = document.getElementById('space-schedule-modal');
+            modal.style.transform = 'translateY(0)';
+        }
+
+        function closeSpaceSchedule() {
+            isSpaceScheduleModalOpen = false;
+            const modal = document.getElementById('space-schedule-modal');
+            modal.style.transform = 'translateY(100%)';
+        }
+
+        function openApplyModalFromSpaceSchedule() {
+            closeSpaceSchedule();
+            setTimeout(() => { openApplyModal(currentSelectedSpace); }, 300);
+        }
+
+        function renderInlineCalendar() {
+            const y = calViewRenderDate.getFullYear();
+            const m = calViewRenderDate.getMonth();
+            document.getElementById('inline-cal-title').textContent = `${y} / ${String(m + 1).padStart(2, '0')}`;
+
+            const firstDay = new Date(y, m, 1).getDay();
+            const daysInMonth = new Date(y, m + 1, 0).getDate();
+            const calDays = document.getElementById('inline-cal-days');
+            
+            let html = '';
+            for (let i = 0; i < firstDay; i++) html += `<div class="cal-cell"></div>`;
+            
+            for (let i = 1; i <= daysInMonth; i++) {
+                let cellDateStr = `${y}/${String(m+1).padStart(2,'0')}/${String(i).padStart(2,'0')}`;
+                let isSelected = (y === globalDate.getFullYear() && m === globalDate.getMonth() && i === globalDate.getDate());
+                let cls = isSelected ? 'cal-cell active-month selected' : 'cal-cell active-month';
+                
+                let hasAct = allActivities.some(a => a.dateStr === cellDateStr);
+                let numColorClass = hasAct ? 'text-rose-500' : '';
+                
+                html += `<div class="${cls}" onclick="setSpecificDate(${y}, ${m}, ${i})"><span class="${numColorClass}">${i}</span></div>`;
+            }
+            calDays.innerHTML = html;
+        }
+
+        // --- 單一活動屬性面板 ---
+        function openActivityByIdx(idx) {
+            const act = allActivities[idx];
+            if (!act) return;
+
+            document.getElementById('act-detail-name').textContent = act.title;
+            document.getElementById('act-detail-time').textContent = `${act.dateStr} | ${act.rawTime || '全天'}`;
+            document.getElementById('act-detail-loc').textContent = act.loc || '無';
+            
+            const safeRemDisplay = (act.remarks && act.remarks !== '無') ? `${act.remarks} 申請` : '無 申請';
+            document.getElementById('act-detail-remark').textContent = safeRemDisplay;
+
+            const today = new Date(); today.setHours(0,0,0,0);
+            const actDate = new Date(act.dateStr); actDate.setHours(0,0,0,0);
+            const isPast = actDate < today;
+
+            const btnContainer = document.getElementById('act-action-buttons');
+            let btnHtml = '';
+
+            if (!isPast) {
+                btnHtml = `
+                    <button class="btn-base btn-dark flex-1" onclick="closeActivityDetails()">返回</button>
+                    <button class="btn-base btn-dark flex-1" onclick="editActivityIdx(${idx})">修改</button>
+                    <button class="btn-base btn-danger flex-1" onclick="cancelActivityIdx(${idx})">取消</button>
+                `;
+            } else {
+                btnHtml = `<button class="btn-base btn-dark w-full" onclick="closeActivityDetails()">返回</button>`;
+            }
+
+            btnContainer.innerHTML = btnHtml;
+            closeSpaceSchedule();
+            setTimeout(() => { document.getElementById('activity-modal').classList.add('show'); }, 150);
+        }
+        
+        function closeActivityDetails() { document.getElementById('activity-modal').classList.remove('show'); }
+
+        function openApplyModalFromDetails(spaceName) {
+            closeActivityDetails();
+            setTimeout(() => { openApplyModal(spaceName); }, 300);
+        }
+
+        // --- 全新整合申請/修改面板邏輯 ---
+        function openApplyModal(spaceName) {
+            currentFormMode = 'add';
+            document.getElementById('btn-submit-apply').textContent = '送出申請';
+
+            const dateStr = document.getElementById('date-display').getAttribute('data-raw-date');
+            document.getElementById('apply-space-name').textContent = spaceName;
+            
+            const wStr = document.getElementById('date-display').textContent.match(/\((.*?)\)/)?.[1] || '';
+            document.getElementById('apply-detail-date').textContent = `${dateStr} (${wStr})`;
+            document.getElementById('apply-detail-date').setAttribute('data-act-date', dateStr);
+            
+            document.getElementById('ts-h1').value = '0'; document.getElementById('ts-h2').value = '8';
+            document.getElementById('ts-m1').value = '0'; document.getElementById('ts-m2').value = '0';
+            document.getElementById('te-h1').value = '1'; document.getElementById('te-h2').value = '7';
+            document.getElementById('te-m1').value = '0'; document.getElementById('te-m2').value = '0';
+
+            document.getElementById('apply-input-applicant').value = '';
+            document.getElementById('apply-input-activity').value = ''; 
+            
+            checkApplyValid();
+            document.getElementById('apply-modal').classList.add('show');
+        }
+
+        function editActivityIdx(idx) {
+            const act = allActivities[idx];
+            if (!act) return;
+            closeActivityDetails();
+            
+            setTimeout(() => {
+                currentFormMode = 'edit';
+                currentEditData = { oldDate: act.dateStr, oldTimeRange: act.rawTime, oldLocation: act.loc, oldActivityName: act.title };
+                
+                document.getElementById('btn-submit-apply').textContent = '確認修改';
+                document.getElementById('apply-space-name').textContent = act.loc;
+                
+                const dObj = new Date(act.dateStr);
+                const weekdays = ['日', '一', '二', '三', '四', '五', '六'];
+                document.getElementById('apply-detail-date').textContent = `${act.dateStr} (${weekdays[dObj.getDay()]})`;
+                document.getElementById('apply-detail-date').setAttribute('data-act-date', act.dateStr);
+
+                let tMatch = act.rawTime.match(/(\d)(\d):(\d)(\d)\s*-\s*(\d)(\d):(\d)(\d)/);
+                if(tMatch) {
+                    document.getElementById('ts-h1').value = tMatch[1]; document.getElementById('ts-h2').value = tMatch[2];
+                    document.getElementById('ts-m1').value = tMatch[3]; document.getElementById('ts-m2').value = tMatch[4];
+                    document.getElementById('te-h1').value = tMatch[5]; document.getElementById('te-h2').value = tMatch[6];
+                    document.getElementById('te-m1').value = tMatch[7]; document.getElementById('te-m2').value = tMatch[8];
+                } else {
+                    document.getElementById('ts-h1').value = '0'; document.getElementById('ts-h2').value = '8';
+                    document.getElementById('ts-m1').value = '0'; document.getElementById('ts-m2').value = '0';
+                    document.getElementById('te-h1').value = '1'; document.getElementById('te-h2').value = '7';
+                    document.getElementById('te-m1').value = '0'; document.getElementById('te-m2').value = '0';
+                }
+
+                document.getElementById('apply-input-activity').value = act.title;
+                document.getElementById('apply-input-applicant').value = act.remarks !== '無' ? act.remarks : ''; 
+                
+                checkApplyValid();
+                document.getElementById('apply-modal').classList.add('show');
+            }, 300);
+        }
+        
+        function closeApplyModal() { document.getElementById('apply-modal').classList.remove('show'); }
+        
+        function checkApplyValid() {
+            const applicant = document.getElementById('apply-input-applicant').value.trim();
+            const activity = document.getElementById('apply-input-activity').value.trim();
+            const btn = document.getElementById('btn-submit-apply');
+            
+            if (applicant !== '' && activity !== '') {
+                btn.className = "btn-base btn-primary flex-[2] text-2xl shadow-lg";
+            } else {
+                btn.className = "btn-base btn-disabled flex-[2] text-2xl shadow-lg";
+            }
+        }
+
+        async function submitApply() {
+            const btn = document.getElementById('btn-submit-apply');
+            const originalText = btn.textContent;
+            btn.textContent = "傳送中..."; 
+            btn.className = "btn-base btn-disabled flex-[2] text-2xl shadow-lg";
+
+            const spaceName = document.getElementById('apply-space-name').textContent;
+            const dateStr = document.getElementById('apply-detail-date').getAttribute('data-act-date');
+            
+            const sh = document.getElementById('ts-h1').value + document.getElementById('ts-h2').value;
+            const sm = document.getElementById('ts-m1').value + document.getElementById('ts-m2').value;
+            const eh = document.getElementById('te-h1').value + document.getElementById('te-h2').value;
+            const em = document.getElementById('te-m1').value + document.getElementById('te-m2').value;
+            const timeStr = `${sh}:${sm} - ${eh}:${em}`;
+
+            const applicantStr = document.getElementById('apply-input-applicant').value.trim();
+            const activityStr = document.getElementById('apply-input-activity').value.trim(); 
+            
+            let payload = {
+                action: currentFormMode === 'edit' ? 'edit' : 'add',
+                date: dateStr,
+                timeRange: timeStr,
+                activityName: activityStr,
+                location: spaceName,
+                remarks: applicantStr,
+                sheetName: '工作表3'
+            };
+
+            if (currentFormMode === 'edit') {
+                payload.oldDate = currentEditData.oldDate;
+                payload.oldTimeRange = currentEditData.oldTimeRange;
+                payload.oldLocation = currentEditData.oldLocation;
+                payload.oldActivityName = currentEditData.oldActivityName;
+            }
+
+            try {
+                await fetch(GAS_WEB_APP_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify(payload)
+                });
+                showToast(currentFormMode === 'edit' ? `✅ 已成功修改申請` : `✅ 已成功送出申請`);
+                closeApplyModal();
+                setTimeout(() => fetchOnlineData(), 1500);
+            } catch(e) {
+                showToast("❌ 傳送失敗，請檢查網路");
+            } finally {
+                btn.textContent = currentFormMode === 'edit' ? '確認修改' : "送出申請"; 
+                checkApplyValid();
+            }
+        }
+
+        async function cancelActivityIdx(idx) {
+            const act = allActivities[idx];
+            if (!act) return;
+            const confirmDel = confirm(`確定要撤銷此預約嗎？\n活動：${act.title}\n資料將嘗試從工作表 3 移除。`);
+            if(confirmDel) {
+                showToast('撤銷中...');
+                closeActivityDetails();
+                try {
+                    await fetch(GAS_WEB_APP_URL, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                        body: JSON.stringify({
+                            action: 'delete',
+                            date: act.dateStr,
+                            timeRange: act.rawTime,
+                            location: act.loc,
+                            activityName: act.title,
+                            oldDate: act.dateStr,
+                            oldTimeRange: act.rawTime,
+                            oldLocation: act.loc,
+                            oldActivityName: act.title,
+                            sheetName: '工作表3'
+                        })
+                    });
+                    showToast('✅ 活動已撤銷');
+                    setTimeout(() => fetchOnlineData(), 1500);
+                } catch(e) {
+                    showToast('❌ 撤銷失敗，請檢查網路');
+                }
+            }
+        }
+
+        // --- 模式切換與翻頁邏輯 ---
+        function switchMode(direction) {
+            currentModeIdx = (currentModeIdx + direction + modes.length) % modes.length;
+            const container = document.getElementById('mode-container');
+            const offset = -(currentModeIdx * 100);
+            container.style.transform = `translateX(${offset}vw)`;
+            if (currentModeIdx === 2) { calViewRenderDate = new Date(globalDate.getTime()); renderInlineCalendar(); }
+        }
+
+        function switchVerticalPage(direction) {
+            const activePanel = document.getElementById(modes[currentModeIdx]);
+            const pages = activePanel.querySelectorAll('.v-page');
+            if(pages.length <= 1) return; 
+
+            let pIdx = pageIndexes[modes[currentModeIdx]];
+            pIdx = (pIdx + direction + pages.length) % pages.length;
+            pageIndexes[modes[currentModeIdx]] = pIdx;
+
+            pages.forEach(p => p.classList.remove('active'));
+            pages[pIdx].classList.add('active');
+
+            if (modes[currentModeIdx] === 'mode-area') {
+                const dateStr = document.getElementById('date-display').getAttribute('data-raw-date');
+                const daysActs = allActivities.filter(a => a.dateStr === dateStr);
+                updateFloorIndicator(pIdx, daysActs);
+            }
+        }
+
+        function updateFloorIndicator(activeIdx, daysActs = []) {
+            const floorSpaces = [['寮房', '歡喜地'], ['大殿'], ['法堂一', '法堂二'], ['齋堂', '大寮', '輕食區']];
+            const dots = document.querySelectorAll('#floor-indicator .floor-dot');
+            const floors = ['4樓', '3樓', '2樓', '1樓'];
+
+            dots.forEach((dot, idx) => {
+                let hasAct = floorSpaces[idx].some(space => getSpaceActivities(space, daysActs).length > 0);
+                if (idx === activeIdx) {
+                    dot.className = 'floor-dot active'; dot.textContent = floors[idx];
+                } else {
+                    dot.className = `floor-dot ${hasAct ? 'text-rose-500 font-bold' : ''}`; dot.textContent = '●';
+                }
+            });
+        }
+
+        function setupTouchGestures(element, isNavZone) {
+            let startX = 0, startY = 0, isDragging = false;
+            function handleGesture(endX, endY) {
+                let dx = endX - startX, dy = endY - startY;
+                const threshold = 40; 
+                if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > threshold) {
+                    if (isNavZone) updateDate(dx < 0 ? 1 : -1);
+                    else switchMode(dx < 0 ? 1 : -1);
+                } else if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > threshold) {
+                    if (!isNavZone) {
+                        if (currentModeIdx === 2) changeCalViewMonth(dy < 0 ? 1 : -1);
+                        else switchVerticalPage(dy < 0 ? 1 : -1);
+                    }
+                }
+            }
+
+            element.addEventListener('touchstart', e => { startX = e.touches[0].clientX; startY = e.touches[0].clientY; }, { passive: true });
+            element.addEventListener('touchend', e => handleGesture(e.changedTouches[0].clientX, e.changedTouches[0].clientY));
+            element.addEventListener('mousedown', e => { isDragging = true; startX = e.clientX; startY = e.clientY; });
+            element.addEventListener('mouseup', e => { if (!isDragging) return; isDragging = false; handleGesture(e.clientX, e.clientY); });
+            element.addEventListener('mouseleave', e => { if (!isDragging) return; isDragging = false; handleGesture(e.clientX, e.clientY); });
+        }
+
+        setupTouchGestures(document.getElementById('display-zone'), false);
+        setupTouchGestures(document.getElementById('nav-zone'), true);
+
+        // 初始化
+        initSplitTimePickers();
+        calViewRenderDate = new Date(globalDate.getTime());
+        syncDateUI();
+        document.getElementById('mode-container').style.transform = `translateX(0vw)`;
+        
+        fetchOnlineData();
+        setInterval(fetchOnlineData, 10 * 60 * 1000);
+
+    </script>
+</body>
+</html>
