@@ -130,14 +130,15 @@
             <div id="mode-area" class="view-panel active relative">
                 
                 <div class="absolute right-3 top-1/2 -translate-y-1/2 flex flex-col gap-2 items-center z-20 pointer-events-none" id="floor-indicator">
-                    <div class="floor-dot active" data-idx="0">4樓</div>
+                    <div class="floor-dot" data-idx="0">●</div>
                     <div class="floor-dot" data-idx="1">●</div>
                     <div class="floor-dot" data-idx="2">●</div>
-                    <div class="floor-dot" data-idx="3">●</div>
+                    <!-- 預設指示 1 樓 -->
+                    <div class="floor-dot active" data-idx="3">1樓</div>
                 </div>
 
-                <!-- 4 樓 -->
-                <div class="v-page active">
+                <!-- 4 樓 (移除 active) -->
+                <div class="v-page">
                     <div class="flex-1 flex flex-col gap-4 pr-14 w-full h-full">
                         <div id="box-寮房" class="space-box empty text-4xl"></div>
                         <div id="box-歡喜地" class="space-box empty text-4xl"></div>
@@ -159,8 +160,8 @@
                     </div>
                 </div>
 
-                <!-- 1 樓 -->
-                <div class="v-page">
+                <!-- 1 樓 (設定為預設顯示 active) -->
+                <div class="v-page active">
                     <div class="flex-1 flex flex-col gap-4 pr-14 w-full h-full">
                         <div id="box-齋堂" class="space-box empty text-3xl"></div>
                         <div id="box-大寮" class="space-box empty text-3xl"></div>
@@ -209,16 +210,17 @@
         <div class="swipe-hint left" style="animation-direction: reverse;">◀ 昨</div>
         <div class="swipe-hint right">明 ▶</div>
         
-        <div class="flex items-center justify-center gap-6 w-full h-full px-6 relative">
+        <div class="flex items-start justify-center gap-6 w-full h-full px-6 pt-6 relative">
             <div class="date-spinner" id="date-display" data-raw-date="">--/--/-- (--)</div>
-            <button onclick="returnToToday()" class="bg-zinc-800/80 text-zinc-300 px-6 py-3 rounded-full font-bold text-xl active:bg-zinc-700 active:scale-95 transition border border-zinc-700 shadow-md whitespace-nowrap">
+            <button id="btn-return-today" onclick="returnToToday()" class="bg-zinc-800/80 text-zinc-300 px-6 py-2 rounded-full font-bold text-xl active:bg-zinc-700 active:scale-95 transition border border-zinc-700 shadow-md whitespace-nowrap hidden">
                 回今日
             </button>
         </div>
     </div>
 
     <!-- ================= [彈出層] 區域專屬行程列表 ================= -->
-    <div id="space-schedule-modal" class="fixed inset-0 z-50 transform translateY-full transition-transform duration-400 ease-in-out pointer-events-none" style="display: flex; flex-direction: column;">
+    <!-- 💡修正：使用 inline style 給定初始 transform，確保啟動時絕對隱藏 -->
+    <div id="space-schedule-modal" class="fixed inset-0 z-50 transition-transform duration-300 ease-in-out pointer-events-none" style="display: flex; flex-direction: column; transform: translateY(100%);">
         <div class="flex-1 bg-zinc-950/95 backdrop-blur-md pointer-events-auto p-6 flex flex-col justify-start pb-8" style="height: 75vh; border-bottom: 2px solid #27272a;">
             
             <!-- 動態注入的區域行程清單 -->
@@ -325,7 +327,8 @@
         const modes = ['mode-area', 'mode-schedule', 'mode-calendar'];
         let currentModeIdx = 0;
         let calViewRenderDate = new Date();
-        let pageIndexes = { 'mode-area': 0, 'mode-schedule': 0, 'mode-calendar': 0 };
+        // 💡 確保 JS 記錄的初始樓層也對齊 1樓 (index 3)
+        let pageIndexes = { 'mode-area': 3, 'mode-schedule': 0, 'mode-calendar': 0 };
         let toastTimer = null;
         
         let currentSelectedSpace = ''; 
@@ -465,12 +468,20 @@
             dateDisplay.textContent = `${dateStr} (${wStr})`;
             dateDisplay.setAttribute('data-raw-date', dateStr);
 
+            // 判斷是否為今天，來決定是否隱藏「回今日」按鈕
+            const today = new Date();
+            const btnReturn = document.getElementById('btn-return-today');
+            if (y === today.getFullYear() && globalDate.getMonth() === today.getMonth() && globalDate.getDate() === today.getDate()) {
+                btnReturn.classList.add('hidden');
+            } else {
+                btnReturn.classList.remove('hidden');
+            }
+
             renderScheduleForDate(dateStr);
             renderAreaForDate(dateStr);
             renderInlineCalendar();
         }
 
-        // --- 動態渲染：行程表 ---
         function renderScheduleForDate(targetDateStr) {
             const listContainer = document.getElementById('schedule-list');
             const daysActs = allActivities.filter(a => a.dateStr === targetDateStr);
